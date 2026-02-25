@@ -1,0 +1,150 @@
+const ExitRequest = require("../models/ExitRequest");
+const Vehicle = require("../models/Vehicle");
+const {
+  successResponse,
+  errorResponse,
+  paginatedResponse,
+} = require("../utils/response");
+const { getPagination, getPaginationMeta } = require("../utils/pagination");
+
+// Create exit request (Driver only)
+exports.createExitRequest = async (req, res, next) => {
+  try {
+    const {
+      vehicle_id,
+      schedule_id,
+      destination,
+      purpose,
+      expected_return,
+      notes,
+    } = req.body;
+
+    // Verify vehicle exists
+    const vehicle = await Vehicle.findById(vehicle_id);
+    if (!vehicle) {
+      return errorResponse(res, "Vehicle not found", 404);
+    }
+
+    const requestId = await ExitRequest.create({
+      vehicle_id,
+      driver_id: req.user.id,
+      schedule_id,
+      destination,
+      purpose,
+      expected_return,
+      notes,
+    });
+
+    const exitRequest = await ExitRequest.findById(requestId);
+    successResponse(res, exitRequest, "Exit request created successfully", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all exit requests (Vehicle Manager)
+exports.getAllExitRequests = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = getPagination(req);
+    const { status } = req.query;
+
+    const requests = await ExitRequest.findAll(limit, offset, status);
+    const total = await ExitRequest.count(status);
+    const pagination = getPaginationMeta(page, limit, total);
+
+    paginatedResponse(
+      res,
+      requests,
+      pagination,
+      "Exit requests retrieved successfully",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get approved exit requests (Security Guard only)
+exports.getApprovedExitRequests = async (req, res, next) => {
+  try {
+    const { page, limit, offset } = getPagination(req);
+
+    const requests = await ExitRequest.findApproved(limit, offset);
+    const total = await ExitRequest.count("approved");
+    const pagination = getPaginationMeta(page, limit, total);
+
+    paginatedResponse(
+      res,
+      requests,
+      pagination,
+      "Approved exit requests retrieved successfully",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get exit request by ID
+exports.getExitRequestById = async (req, res, next) => {
+  try {
+    const request = await ExitRequest.findById(req.params.id);
+
+    if (!request) {
+      return errorResponse(res, "Exit request not found", 404);
+    }
+
+    successResponse(res, request, "Exit request retrieved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Approve exit request (Vehicle Manager only)
+exports.approveExitRequest = async (req, res, next) => {
+  try {
+    const requestId = req.params.id;
+
+    const request = await ExitRequest.findById(requestId);
+    if (!request) {
+      return errorResponse(res, "Exit request not found", 404);
+    }
+
+    if (request.status !== "pending") {
+      return errorResponse(res, "Only pending requests can be approved", 400);
+    }
+
+    await ExitRequest.approve(requestId, req.user.id);
+    const updatedRequest = await ExitRequest.findById(requestId);
+
+    successResponse(res, updatedRequest, "Exit request approved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Reject exit request (Vehicle Manager only)
+exports.rejectExitRequest = async (req, res, next) => {
+  try {
+    const requestId = req.params.id;
+    const { rejection_reason } = req.body;
+
+    if (!rejection_reason) {
+      return errorResponse(res, "Rejection reason is required", 400);
+    }
+
+    const request = await ExitRequest.findById(requestId);
+    if (!request) {
+      return errorResponse(res, "Exit request not found", 404);
+    }
+
+    if (request.status !== "pending") {
+      return errorResponse(res, "Only pending requests can be rejected", 400);
+    }
+
+    await ExitRequest.reject(requestId, req.user.id, rejection_reason);
+    const updatedRequest = await ExitRequest.findById(requestId);
+
+    successResponse(res, updatedRequest, "Exit request rejected");
+  } catch (error) {
+    next(error);
+  }
+};
