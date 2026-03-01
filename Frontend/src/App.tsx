@@ -16,15 +16,20 @@ import FuelBalancePage from "@/pages/FuelBalance";
 import MaintenancePage from "@/pages/Maintenance";
 import ExitWorkflowPage from "@/pages/ExitWorkflow";
 import ReportsPage from "@/pages/Reports";
+import ChangePasswordPage from "@/pages/ChangePassword";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
 
   // Enable real-time notifications
   useRealtimeNotifications();
+
+  // Check if user needs to change password
+  const needsPasswordChange = isAuthenticated && user && !user.passwordChanged;
 
   return (
     <Routes>
@@ -41,14 +46,30 @@ function AppRoutes() {
         }
       />
 
+      {/* Change Password Route - accessible to all authenticated users */}
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <ChangePasswordPage isFirstLogin={needsPasswordChange} />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Protected routes */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <AppLayout>
-              <DashboardPage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <DashboardPage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -56,9 +77,13 @@ function AppRoutes() {
         path="/users"
         element={
           <ProtectedRoute allowedRoles={["system_admin"]}>
-            <AppLayout>
-              <UserManagement />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <UserManagement />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -66,9 +91,13 @@ function AppRoutes() {
         path="/vehicles"
         element={
           <ProtectedRoute allowedRoles={["vehicle_manager", "scheduler"]}>
-            <AppLayout>
-              <VehicleManagement />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <VehicleManagement />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -84,9 +113,13 @@ function AppRoutes() {
               "user",
             ]}
           >
-            <AppLayout>
-              <SchedulesPage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <SchedulesPage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -94,9 +127,13 @@ function AppRoutes() {
         path="/fuel"
         element={
           <ProtectedRoute allowedRoles={["vehicle_manager"]}>
-            <AppLayout>
-              <FuelBalancePage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <FuelBalancePage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -106,9 +143,13 @@ function AppRoutes() {
           <ProtectedRoute
             allowedRoles={["driver", "mechanic", "vehicle_manager"]}
           >
-            <AppLayout>
-              <MaintenancePage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <MaintenancePage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -118,9 +159,13 @@ function AppRoutes() {
           <ProtectedRoute
             allowedRoles={["driver", "vehicle_manager", "security_guard"]}
           >
-            <AppLayout>
-              <ExitWorkflowPage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <ExitWorkflowPage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />
@@ -128,9 +173,13 @@ function AppRoutes() {
         path="/reports"
         element={
           <ProtectedRoute allowedRoles={["system_admin", "vehicle_manager"]}>
-            <AppLayout>
-              <ReportsPage />
-            </AppLayout>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <ReportsPage />
+              </AppLayout>
+            )}
           </ProtectedRoute>
         }
       />

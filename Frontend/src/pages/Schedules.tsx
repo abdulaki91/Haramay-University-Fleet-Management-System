@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { useAuthStore } from "@/store/authStore";
 import type { Schedule } from "@/types";
 import { useState } from "react";
@@ -50,8 +51,8 @@ export default function SchedulesPage() {
     vehicleId: "",
     driverId: "",
     destination: "",
-    departureTime: "",
-    returnTime: "",
+    departureTime: undefined as Date | undefined,
+    returnTime: undefined as Date | undefined,
     purpose: "",
     passengers: 1,
   });
@@ -61,13 +62,54 @@ export default function SchedulesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
       setDialogOpen(false);
+      setForm({
+        vehicleId: "",
+        driverId: "",
+        destination: "",
+        departureTime: undefined,
+        returnTime: undefined,
+        purpose: "",
+        passengers: 1,
+      });
       toast({ title: t("schedules.scheduleCreated") });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ ...form, status: "scheduled" });
+
+    // Validate dates
+    if (!form.departureTime || !form.returnTime) {
+      toast({
+        title: "Error",
+        description: "Please select both departure and return times",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (form.returnTime <= form.departureTime) {
+      toast({
+        title: "Error",
+        description: "Return time must be after departure time",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convert dates to ISO strings for API
+    const scheduleData: Partial<Schedule> = {
+      vehicleId: form.vehicleId,
+      driverId: form.driverId,
+      destination: form.destination,
+      purpose: form.purpose,
+      passengers: form.passengers,
+      departureTime: form.departureTime.toISOString(),
+      returnTime: form.returnTime.toISOString(),
+      status: "scheduled",
+    };
+
+    createMutation.mutate(scheduleData);
   };
 
   // Filter users to show only drivers
@@ -194,24 +236,22 @@ export default function SchedulesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{t("schedules.departure")}</Label>
-                    <Input
-                      type="datetime-local"
-                      value={form.departureTime}
-                      onChange={(e) =>
-                        setForm({ ...form, departureTime: e.target.value })
+                    <DateTimePicker
+                      date={form.departureTime}
+                      setDate={(date) =>
+                        setForm({ ...form, departureTime: date })
                       }
-                      required
+                      placeholder="Select departure date & time"
+                      minDate={new Date()}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>{t("schedules.return")}</Label>
-                    <Input
-                      type="datetime-local"
-                      value={form.returnTime}
-                      onChange={(e) =>
-                        setForm({ ...form, returnTime: e.target.value })
-                      }
-                      required
+                    <DateTimePicker
+                      date={form.returnTime}
+                      setDate={(date) => setForm({ ...form, returnTime: date })}
+                      placeholder="Select return date & time"
+                      minDate={form.departureTime || new Date()}
                     />
                   </div>
                 </div>

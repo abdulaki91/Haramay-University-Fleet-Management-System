@@ -10,6 +10,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { ROLE_LABELS, type Role, type User } from "@/types";
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +44,12 @@ export default function UserManagement() {
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [credentialsDialog, setCredentialsDialog] = useState(false);
+  const [newUserCredentials, setNewUserCredentials] = useState<{
+    email: string;
+    password: string;
+    fullName: string;
+  } | null>(null);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -47,9 +62,19 @@ export default function UserManagement() {
       console.log("Creating user with data:", data);
       return userService.create(data);
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setDialogOpen(false);
+
+      // Show credentials dialog with generated password
+      const password = `${variables.username}@123`;
+      setNewUserCredentials({
+        email: variables.email || "",
+        password: password,
+        fullName: variables.fullName || "",
+      });
+      setCredentialsDialog(true);
+
       setForm({ fullName: "", email: "", username: "", role: "user" });
       toast({ title: t("users.userCreated") });
     },
@@ -233,6 +258,75 @@ export default function UserManagement() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Credentials Dialog */}
+      <AlertDialog open={credentialsDialog} onOpenChange={setCredentialsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>User Created Successfully!</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  The user account has been created. Please share these
+                  credentials with{" "}
+                  <strong>{newUserCredentials?.fullName}</strong>:
+                </p>
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-mono font-semibold">
+                        {newUserCredentials?.email}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          newUserCredentials?.email || "",
+                        );
+                        toast({ title: "Email copied!" });
+                      }}
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Password</p>
+                      <p className="font-mono font-semibold">
+                        {newUserCredentials?.password}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          newUserCredentials?.password || "",
+                        );
+                        toast({ title: "Password copied!" });
+                      }}
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    ⚠️ <strong>Important:</strong> Ask the user to change their
+                    password after first login for security.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>Got it!</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DataTable
         columns={columns}

@@ -43,7 +43,10 @@ exports.login = async (req, res, next) => {
       res,
       {
         token,
-        user: transformedUser,
+        user: {
+          ...transformedUser,
+          passwordChanged: user.password_changed || false,
+        },
       },
       "Login successful",
     );
@@ -80,6 +83,10 @@ exports.changePassword = async (req, res, next) => {
     }
 
     await User.updatePassword(req.user.id, new_password);
+
+    // Mark password as changed
+    await User.markPasswordChanged(req.user.id);
+
     successResponse(res, null, "Password changed successfully");
   } catch (error) {
     next(error);

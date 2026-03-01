@@ -8,8 +8,8 @@ class User {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, username, password, phone, role_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (first_name, last_name, email, username, password, phone, role_id, password_changed) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, FALSE)`,
       [first_name, last_name, email, username, hashedPassword, phone, role_id],
     );
 
@@ -19,7 +19,7 @@ class User {
   static async findById(id) {
     const [rows] = await pool.query(
       `SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone, u.is_active,
-              u.created_at, u.updated_at, r.id as role_id, r.name as role_name
+              u.password_changed, u.created_at, u.updated_at, r.id as role_id, r.name as role_name
        FROM users u
        JOIN roles r ON u.role_id = r.id
        WHERE u.id = ?`,
@@ -48,6 +48,12 @@ class User {
       [username],
     );
     return rows[0];
+  }
+
+  static async markPasswordChanged(id) {
+    await pool.query("UPDATE users SET password_changed = TRUE WHERE id = ?", [
+      id,
+    ]);
   }
 
   static async findAll(limit, offset) {
