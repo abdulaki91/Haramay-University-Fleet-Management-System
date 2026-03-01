@@ -147,6 +147,9 @@
     "approved": "ጸድቋል",
     "denied": "ውድቅ ተደርጓል",
     "exitRequested": "የመውጫ ጥያቄ ተልኳል",
+    "noSchedules": "ምንም መርሃ ግብር የለም",
+    "noSchedulesAvailable": "እስካሁን ምንም መርሃ ግብር የለዎትም። መርሃ ግብር አውጪ መጀመሪያ መርሃ ግብር መፍጠር አለበት።",
+    "scheduleRequired": "የመውጫ ፍቃድ ለመጠየቅ የጸደቀ መርሃ ግብር ያስፈልግዎታል",
     "exitApproved": "የመውጫ ጥያቄ ጸድቋል",
     "exitRejected": "የመውጫ ጥያቄ ውድቅ ተደርጓል"
   },

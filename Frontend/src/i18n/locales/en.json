@@ -148,6 +148,9 @@
     "approved": "Approved",
     "denied": "Denied",
     "exitRequested": "Exit request submitted",
+    "noSchedules": "No schedules available",
+    "noSchedulesAvailable": "You don't have any schedules yet. A scheduler must create a schedule for you first.",
+    "scheduleRequired": "You need an approved schedule to request exit permission",
     "exitApproved": "Exit request approved",
     "exitRejected": "Exit request rejected"
   },

@@ -147,6 +147,9 @@
     "approved": "Mirkanaa'e",
     "denied": "Didame",
     "exitRequested": "Gaaffiin bahumsaa ergame",
+    "noSchedules": "Sagantaan hin jiru",
+    "noSchedulesAvailable": "Amma sagantaa hin qabdu. Sagantaa qopheessaan dursa sagantaa uumuu qaba.",
+    "scheduleRequired": "Hayyama bahumsaa gaafachuuf sagantaa mirkanaa'e si barbaachisa",
     "exitApproved": "Gaaffiin bahumsaa mirkanaa'e",
     "exitRejected": "Gaaffiin bahumsaa didame"
   },
