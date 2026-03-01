@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { successResponse, errorResponse } = require("../utils/response");
+const { transformUser } = require("../utils/transformer");
 
 // Login
 exports.login = async (req, res, next) => {
@@ -35,21 +36,14 @@ exports.login = async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRE || "7d" },
     );
 
-    // Remove password from response
-    delete user.password;
+    // Transform user data for frontend
+    const transformedUser = transformUser(user);
 
     successResponse(
       res,
       {
         token,
-        user: {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role_name,
-        },
+        user: transformedUser,
       },
       "Login successful",
     );
@@ -62,9 +56,9 @@ exports.login = async (req, res, next) => {
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
-    delete user.password;
+    const transformedUser = transformUser(user);
 
-    successResponse(res, user, "Profile retrieved successfully");
+    successResponse(res, transformedUser, "Profile retrieved successfully");
   } catch (error) {
     next(error);
   }

@@ -6,11 +6,24 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { transformUser, transformUserToDb } = require("../utils/transformer");
 
 // Create user (Admin only)
 exports.createUser = async (req, res, next) => {
   try {
-    const { first_name, last_name, email, password, phone, role_id } = req.body;
+    const userData = req.body;
+
+    // Transform from frontend format if needed
+    const dbData = userData.fullName ? transformUserToDb(userData) : userData;
+
+    // Ensure we have required fields
+    const { first_name, last_name, username, email, password, phone, role_id } =
+      {
+        ...dbData,
+        username: dbData.username || userData.username,
+        password: userData.password,
+        role_id: userData.role_id || userData.roleId,
+      };
 
     // Check if email already exists
     const existingUser = await User.findByEmail(email);
@@ -27,14 +40,16 @@ exports.createUser = async (req, res, next) => {
     const userId = await User.create({
       first_name,
       last_name,
+      username,
       email,
       password,
       phone,
       role_id,
     });
     const user = await User.findById(userId);
+    const transformedUser = transformUser(user);
 
-    successResponse(res, user, "User created successfully", 201);
+    successResponse(res, transformedUser, "User created successfully", 201);
   } catch (error) {
     next(error);
   }
@@ -46,10 +61,16 @@ exports.getAllUsers = async (req, res, next) => {
     const { page, limit, offset } = getPagination(req);
 
     const users = await User.findAll(limit, offset);
+    const transformedUsers = users.map(transformUser);
     const total = await User.count();
     const pagination = getPaginationMeta(page, limit, total);
 
-    paginatedResponse(res, users, pagination, "Users retrieved successfully");
+    paginatedResponse(
+      res,
+      transformedUsers,
+      pagination,
+      "Users retrieved successfully",
+    );
   } catch (error) {
     next(error);
   }
@@ -64,7 +85,8 @@ exports.getUserById = async (req, res, next) => {
       return errorResponse(res, "User not found", 404);
     }
 
-    successResponse(res, user, "User retrieved successfully");
+    const transformedUser = transformUser(user);
+    successResponse(res, transformedUser, "User retrieved successfully");
   } catch (error) {
     next(error);
   }
@@ -97,8 +119,9 @@ exports.updateUser = async (req, res, next) => {
       is_active,
     });
     const updatedUser = await User.findById(userId);
+    const transformedUser = transformUser(updatedUser);
 
-    successResponse(res, updatedUser, "User updated successfully");
+    successResponse(res, transformedUser, "User updated successfully");
   } catch (error) {
     next(error);
   }
@@ -144,8 +167,9 @@ exports.assignRole = async (req, res, next) => {
 
     await User.update(userId, { role_id });
     const updatedUser = await User.findById(userId);
+    const transformedUser = transformUser(updatedUser);
 
-    successResponse(res, updatedUser, "Role assigned successfully");
+    successResponse(res, transformedUser, "Role assigned successfully");
   } catch (error) {
     next(error);
   }

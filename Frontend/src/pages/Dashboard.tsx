@@ -1,24 +1,76 @@
 import { useAuthStore } from "@/store/authStore";
 import { useQuery } from "@tanstack/react-query";
-import { vehicleService, scheduleService, exitService, maintenanceService, fuelService } from "@/api/services";
+import { useTranslation } from "react-i18next";
+import {
+  vehicleService,
+  scheduleService,
+  exitService,
+  maintenanceService,
+  fuelService,
+} from "@/api/services";
 import { ROLE_LABELS } from "@/types";
 import StatusBadge from "@/components/StatusBadge";
-import { Car, CalendarDays, Fuel, Wrench, Shield, Users, FileText, TrendingUp } from "lucide-react";
+import {
+  Car,
+  CalendarDays,
+  Fuel,
+  Wrench,
+  Shield,
+  Users,
+  FileText,
+  TrendingUp,
+} from "lucide-react";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user)!;
 
-  const { data: vehicles = [] } = useQuery({ queryKey: ["vehicles"], queryFn: vehicleService.getAll });
-  const { data: schedules = [] } = useQuery({ queryKey: ["schedules"], queryFn: scheduleService.getAll });
-  const { data: exitRequests = [] } = useQuery({ queryKey: ["exitRequests"], queryFn: exitService.getAll });
-  const { data: maintenance = [] } = useQuery({ queryKey: ["maintenance"], queryFn: maintenanceService.getAll });
-  const { data: fuelRecords = [] } = useQuery({ queryKey: ["fuel"], queryFn: fuelService.getAll });
+  const { data: vehicles = [] } = useQuery({
+    queryKey: ["vehicles"],
+    queryFn: vehicleService.getAll,
+  });
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["schedules"],
+    queryFn: scheduleService.getAll,
+  });
+  const { data: exitRequests = [] } = useQuery({
+    queryKey: ["exitRequests"],
+    queryFn: exitService.getAll,
+  });
+  const { data: maintenance = [] } = useQuery({
+    queryKey: ["maintenance"],
+    queryFn: maintenanceService.getAll,
+  });
+  const { data: fuelRecords = [] } = useQuery({
+    queryKey: ["fuel"],
+    queryFn: fuelService.getAll,
+  });
 
   const stats = [
-    { label: "Total Vehicles", value: vehicles.length, icon: <Car size={22} />, color: "text-info" },
-    { label: "Scheduled Trips", value: schedules.length, icon: <CalendarDays size={22} />, color: "text-success" },
-    { label: "Exit Requests", value: exitRequests.filter((e) => e.status === "pending").length, icon: <Shield size={22} />, color: "text-warning" },
-    { label: "Maintenance", value: maintenance.filter((m) => m.status !== "completed").length, icon: <Wrench size={22} />, color: "text-destructive" },
+    {
+      label: t("dashboard.totalVehicles"),
+      value: vehicles.length,
+      icon: <Car size={22} />,
+      color: "text-info",
+    },
+    {
+      label: t("dashboard.scheduledTrips"),
+      value: schedules.length,
+      icon: <CalendarDays size={22} />,
+      color: "text-success",
+    },
+    {
+      label: t("dashboard.exitRequests"),
+      value: exitRequests.filter((e) => e.status === "pending").length,
+      icon: <Shield size={22} />,
+      color: "text-warning",
+    },
+    {
+      label: t("dashboard.maintenance"),
+      value: maintenance.filter((m) => m.status !== "completed").length,
+      icon: <Wrench size={22} />,
+      color: "text-destructive",
+    },
   ];
 
   const totalFuel = fuelRecords.reduce((sum, f) => sum + f.totalCost, 0);
@@ -26,8 +78,11 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Welcome back, {user.fullName} — {ROLE_LABELS[user.role]}</p>
+        <h1 className="page-title">{t("dashboard.title")}</h1>
+        <p className="page-subtitle">
+          {t("dashboard.welcomeBack")}, {user.fullName} —{" "}
+          {t(`roles.${user.role}`)}
+        </p>
       </div>
 
       {/* Stats grid */}
@@ -49,35 +104,51 @@ export default function DashboardPage() {
         <div className="stat-card mb-6">
           <div className="flex items-center gap-3 mb-2">
             <Fuel size={20} className="text-warning" />
-            <h3 className="font-semibold">Fuel Expenditure</h3>
+            <h3 className="font-semibold">{t("dashboard.fuelExpenditure")}</h3>
           </div>
           <p className="text-3xl font-bold">{totalFuel.toLocaleString()} ETB</p>
-          <p className="text-sm text-muted-foreground">{fuelRecords.length} fuel records total</p>
+          <p className="text-sm text-muted-foreground">
+            {fuelRecords.length} {t("dashboard.fuelRecordsTotal")}
+          </p>
         </div>
       )}
 
       {/* Recent schedules */}
       <div className="table-container">
         <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-semibold">Recent Schedules</h3>
+          <h3 className="font-semibold">{t("dashboard.recentSchedules")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Destination</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Purpose</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Departure</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">
+                  {t("schedules.destination")}
+                </th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">
+                  {t("schedules.purpose")}
+                </th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">
+                  {t("schedules.departure")}
+                </th>
+                <th className="text-left px-5 py-3 font-medium text-muted-foreground">
+                  {t("schedules.status")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {schedules.slice(0, 5).map((s) => (
                 <tr key={s.id} className="border-b border-border last:border-0">
                   <td className="px-5 py-3 font-medium">{s.destination}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{s.purpose}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{new Date(s.departureTime).toLocaleDateString()}</td>
-                  <td className="px-5 py-3"><StatusBadge status={s.status} /></td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {s.purpose}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {new Date(s.departureTime).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-3">
+                    <StatusBadge status={s.status} />
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -6,6 +6,7 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { transformFuelRecord } = require("../utils/transformer");
 
 // Add fuel record
 exports.addFuelRecord = async (req, res, next) => {
@@ -50,12 +51,13 @@ exports.getAllFuelRecords = async (req, res, next) => {
     const { page, limit, offset } = getPagination(req);
 
     const fuelRecords = await FuelRecord.findAll(limit, offset);
+    const transformedRecords = fuelRecords.map(transformFuelRecord);
     const total = await FuelRecord.count();
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(
       res,
-      fuelRecords,
+      transformedRecords,
       pagination,
       "Fuel records retrieved successfully",
     );

@@ -3,13 +3,14 @@ const bcrypt = require("bcrypt");
 
 class User {
   static async create(userData) {
-    const { first_name, last_name, email, password, phone, role_id } = userData;
+    const { first_name, last_name, email, username, password, phone, role_id } =
+      userData;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, password, phone, role_id) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [first_name, last_name, email, hashedPassword, phone, role_id],
+      `INSERT INTO users (first_name, last_name, email, username, password, phone, role_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [first_name, last_name, email, username, hashedPassword, phone, role_id],
     );
 
     return result.insertId;
@@ -17,7 +18,7 @@ class User {
 
   static async findById(id) {
     const [rows] = await pool.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.is_active,
+      `SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone, u.is_active,
               u.created_at, u.updated_at, r.id as role_id, r.name as role_name
        FROM users u
        JOIN roles r ON u.role_id = r.id
@@ -40,7 +41,7 @@ class User {
 
   static async findAll(limit, offset) {
     const [rows] = await pool.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.is_active,
+      `SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone, u.is_active,
               u.created_at, r.name as role_name
        FROM users u
        JOIN roles r ON u.role_id = r.id

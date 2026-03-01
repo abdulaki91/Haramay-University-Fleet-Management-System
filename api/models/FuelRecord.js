@@ -50,7 +50,7 @@ class FuelRecord {
        FROM fuel_records fr
        JOIN users u ON fr.driver_id = u.id
        WHERE fr.vehicle_id = ?
-       ORDER BY fr.filled_at DESC
+       ORDER BY fr.fueled_at DESC
        LIMIT ? OFFSET ?`,
       [vehicleId, limit, offset],
     );
@@ -64,7 +64,7 @@ class FuelRecord {
        FROM fuel_records fr
        JOIN vehicles v ON fr.vehicle_id = v.id
        JOIN users u ON fr.driver_id = u.id
-       ORDER BY fr.filled_at DESC
+       ORDER BY fr.fueled_at DESC
        LIMIT ? OFFSET ?`,
       [limit, offset],
     );

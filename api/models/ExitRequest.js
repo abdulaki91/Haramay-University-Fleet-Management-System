@@ -78,7 +78,7 @@ class ExitRequest {
        JOIN users u1 ON er.driver_id = u1.id
        LEFT JOIN users u2 ON er.approved_by = u2.id
        WHERE er.status = 'approved'
-       ORDER BY er.approval_date DESC
+       ORDER BY er.approved_at DESC
        LIMIT ? OFFSET ?`,
       [limit, offset],
     );
@@ -101,7 +101,7 @@ class ExitRequest {
   static async approve(id, approvedBy) {
     await pool.query(
       `UPDATE exit_requests 
-       SET status = 'approved', approved_by = ?, approval_date = NOW() 
+       SET status = 'approved', approved_by = ?, approved_at = NOW() 
        WHERE id = ?`,
       [approvedBy, id],
     );
@@ -110,7 +110,7 @@ class ExitRequest {
   static async reject(id, approvedBy, reason) {
     await pool.query(
       `UPDATE exit_requests 
-       SET status = 'rejected', approved_by = ?, rejection_reason = ?, approval_date = NOW() 
+       SET status = 'rejected', approved_by = ?, rejection_reason = ?, approved_at = NOW() 
        WHERE id = ?`,
       [approvedBy, reason, id],
     );

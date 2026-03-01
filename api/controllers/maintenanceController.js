@@ -6,6 +6,8 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { emitToRole, emitToUser } = require("../services/socketService");
+const { transformMaintenanceRequest } = require("../utils/transformer");
 
 // Create maintenance request (Driver only)
 exports.createMaintenanceRequest = async (req, res, next) => {
@@ -28,6 +30,11 @@ exports.createMaintenanceRequest = async (req, res, next) => {
     });
 
     const maintenanceRequest = await MaintenanceRequest.findById(requestId);
+
+    // Emit real-time notification to vehicle managers and mechanics
+    emitToRole("vehicle_manager", "maintenance:created", maintenanceRequest);
+    emitToRole("mechanic", "maintenance:created", maintenanceRequest);
+
     successResponse(
       res,
       maintenanceRequest,
@@ -46,12 +53,13 @@ exports.getAllMaintenanceRequests = async (req, res, next) => {
     const { status } = req.query;
 
     const requests = await MaintenanceRequest.findAll(limit, offset, status);
+    const transformedRequests = requests.map(transformMaintenanceRequest);
     const total = await MaintenanceRequest.count(status);
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(
       res,
-      requests,
+      transformedRequests,
       pagination,
       "Maintenance requests retrieved successfully",
     );
@@ -104,6 +112,14 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
     }
 
     const updatedRequest = await MaintenanceRequest.findById(requestId);
+
+    // Emit real-time notification to requester and relevant roles
+    emitToUser(request.requested_by, "maintenance:updated", updatedRequest);
+    emitToRole("vehicle_manager", "maintenance:updated", updatedRequest);
+    if (assigned_to) {
+      emitToUser(assigned_to, "maintenance:assigned", updatedRequest);
+    }
+
     successResponse(
       res,
       updatedRequest,

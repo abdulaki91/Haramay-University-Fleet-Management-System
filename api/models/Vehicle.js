@@ -59,7 +59,7 @@ class Vehicle {
       params.push(status);
     }
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    query += " ORDER BY registered_at DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const [rows] = await pool.query(query, params);

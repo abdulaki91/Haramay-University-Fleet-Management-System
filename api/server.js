@@ -1,8 +1,10 @@
 const express = require("express");
+const http = require("http");
 const cors = require("cors");
 require("dotenv").config();
 
 const { initializeDatabase } = require("./config/database");
+const { initializeSocket } = require("./services/socketService");
 const errorHandler = require("./middlewares/errorHandler");
 
 // Import routes
@@ -16,9 +18,31 @@ const exitRequestRoutes = require("./routes/exitRequestRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
+const server = http.createServer(app);
 
 // Middleware
-app.use(cors());
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:8080",
+  "http://localhost:3000",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -56,11 +80,15 @@ const startServer = async () => {
     // Initialize database (create tables if they don't exist)
     await initializeDatabase();
 
+    // Initialize Socket.IO
+    initializeSocket(server);
+
     // Start server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`✓ API available at http://localhost:${PORT}/api`);
+      console.log(`✓ WebSocket server initialized`);
     });
   } catch (error) {
     console.error("✗ Failed to start server:", error.message);

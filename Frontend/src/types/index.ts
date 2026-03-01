@@ -36,7 +36,7 @@ export interface Vehicle {
   year: number;
   type: "bus" | "van" | "pickup" | "sedan" | "truck";
   status: "available" | "in_use" | "maintenance" | "retired";
-  fuelType: "diesel" | "gasoline" | "electric";
+  fuelType: "diesel" | "petrol" | "electric" | "hybrid";
   mileage: number;
   registeredAt: string;
 }

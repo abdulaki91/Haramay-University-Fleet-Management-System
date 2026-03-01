@@ -6,6 +6,8 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { emitToRole, emitToUser } = require("../services/socketService");
+const { transformExitRequest } = require("../utils/transformer");
 
 // Create exit request (Driver only)
 exports.createExitRequest = async (req, res, next) => {
@@ -36,6 +38,10 @@ exports.createExitRequest = async (req, res, next) => {
     });
 
     const exitRequest = await ExitRequest.findById(requestId);
+
+    // Emit real-time notification to vehicle managers
+    emitToRole("vehicle_manager", "exit_request:created", exitRequest);
+
     successResponse(res, exitRequest, "Exit request created successfully", 201);
   } catch (error) {
     next(error);
@@ -49,12 +55,13 @@ exports.getAllExitRequests = async (req, res, next) => {
     const { status } = req.query;
 
     const requests = await ExitRequest.findAll(limit, offset, status);
+    const transformedRequests = requests.map(transformExitRequest);
     const total = await ExitRequest.count(status);
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(
       res,
-      requests,
+      transformedRequests,
       pagination,
       "Exit requests retrieved successfully",
     );
@@ -115,6 +122,10 @@ exports.approveExitRequest = async (req, res, next) => {
     await ExitRequest.approve(requestId, req.user.id);
     const updatedRequest = await ExitRequest.findById(requestId);
 
+    // Emit real-time notifications
+    emitToUser(request.driver_id, "exit_request:approved", updatedRequest);
+    emitToRole("security_guard", "exit_request:approved", updatedRequest);
+
     successResponse(res, updatedRequest, "Exit request approved successfully");
   } catch (error) {
     next(error);
@@ -142,6 +153,9 @@ exports.rejectExitRequest = async (req, res, next) => {
 
     await ExitRequest.reject(requestId, req.user.id, rejection_reason);
     const updatedRequest = await ExitRequest.findById(requestId);
+
+    // Emit real-time notification to driver
+    emitToUser(request.driver_id, "exit_request:rejected", updatedRequest);
 
     successResponse(res, updatedRequest, "Exit request rejected");
   } catch (error) {

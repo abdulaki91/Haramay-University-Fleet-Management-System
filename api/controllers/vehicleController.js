@@ -5,10 +5,20 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { emitToAll } = require("../services/socketService");
+const {
+  transformVehicle,
+  transformVehicleToDb,
+} = require("../utils/transformer");
 
 // Register vehicle (Vehicle Manager only)
 exports.registerVehicle = async (req, res, next) => {
   try {
+    // Accept both camelCase and snake_case
+    const vehicleData = req.body.plateNumber
+      ? transformVehicleToDb(req.body)
+      : req.body;
+
     const {
       plate_number,
       make,
@@ -20,7 +30,7 @@ exports.registerVehicle = async (req, res, next) => {
       fuel_type,
       status,
       mileage,
-    } = req.body;
+    } = vehicleData;
 
     const vehicleId = await Vehicle.create({
       plate_number,
@@ -31,12 +41,19 @@ exports.registerVehicle = async (req, res, next) => {
       vin,
       capacity,
       fuel_type,
-      status,
-      mileage,
+      status: status || "available",
+      mileage: mileage || 0,
     });
 
     const vehicle = await Vehicle.findById(vehicleId);
-    successResponse(res, vehicle, "Vehicle registered successfully", 201);
+    const transformedVehicle = transformVehicle(vehicle);
+
+    successResponse(
+      res,
+      transformedVehicle,
+      "Vehicle registered successfully",
+      201,
+    );
   } catch (error) {
     next(error);
   }
@@ -49,12 +66,13 @@ exports.getAllVehicles = async (req, res, next) => {
     const { status } = req.query;
 
     const vehicles = await Vehicle.findAll(limit, offset, status);
+    const transformedVehicles = vehicles.map(transformVehicle);
     const total = await Vehicle.count(status);
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(
       res,
-      vehicles,
+      transformedVehicles,
       pagination,
       "Vehicles retrieved successfully",
     );
@@ -72,7 +90,8 @@ exports.getVehicleById = async (req, res, next) => {
       return errorResponse(res, "Vehicle not found", 404);
     }
 
-    successResponse(res, vehicle, "Vehicle retrieved successfully");
+    const transformedVehicle = transformVehicle(vehicle);
+    successResponse(res, transformedVehicle, "Vehicle retrieved successfully");
   } catch (error) {
     next(error);
   }
@@ -93,7 +112,8 @@ exports.searchByPlateNumber = async (req, res, next) => {
       );
     }
 
-    successResponse(res, vehicles, "Vehicles found");
+    const transformedVehicles = vehicles.map(transformVehicle);
+    successResponse(res, transformedVehicles, "Vehicles found");
   } catch (error) {
     next(error);
   }
@@ -103,6 +123,12 @@ exports.searchByPlateNumber = async (req, res, next) => {
 exports.updateVehicle = async (req, res, next) => {
   try {
     const vehicleId = req.params.id;
+
+    // Accept both camelCase and snake_case
+    const vehicleData = req.body.plateNumber
+      ? transformVehicleToDb(req.body)
+      : req.body;
+
     const {
       plate_number,
       make,
@@ -113,7 +139,7 @@ exports.updateVehicle = async (req, res, next) => {
       capacity,
       fuel_type,
       mileage,
-    } = req.body;
+    } = vehicleData;
 
     const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
@@ -133,7 +159,12 @@ exports.updateVehicle = async (req, res, next) => {
     });
 
     const updatedVehicle = await Vehicle.findById(vehicleId);
-    successResponse(res, updatedVehicle, "Vehicle updated successfully");
+    const transformedVehicle = transformVehicle(updatedVehicle);
+
+    // Emit real-time notification about vehicle update
+    emitToAll("vehicle:updated", transformedVehicle);
+
+    successResponse(res, transformedVehicle, "Vehicle updated successfully");
   } catch (error) {
     next(error);
   }
@@ -152,8 +183,16 @@ exports.updateVehicleStatus = async (req, res, next) => {
 
     await Vehicle.updateStatus(vehicleId, status);
     const updatedVehicle = await Vehicle.findById(vehicleId);
+    const transformedVehicle = transformVehicle(updatedVehicle);
 
-    successResponse(res, updatedVehicle, "Vehicle status updated successfully");
+    // Emit real-time notification to all users about vehicle status change
+    emitToAll("vehicle:updated", transformedVehicle);
+
+    successResponse(
+      res,
+      transformedVehicle,
+      "Vehicle status updated successfully",
+    );
   } catch (error) {
     next(error);
   }

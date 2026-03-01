@@ -88,7 +88,7 @@ class MaintenanceRequest {
     }
 
     if (status === "completed") {
-      updates.push("completed_date = CURDATE()");
+      updates.push("completed_at = NOW()");
     }
 
     values.push(id);

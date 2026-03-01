@@ -7,10 +7,26 @@ const {
   paginatedResponse,
 } = require("../utils/response");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { emitToRole, emitToUser } = require("../services/socketService");
+const { transformSchedule } = require("../utils/transformer");
 
 // Create schedule (Scheduler only)
 exports.createSchedule = async (req, res, next) => {
   try {
+    // Accept both camelCase and snake_case
+    const scheduleData = req.body.vehicleId
+      ? {
+          vehicle_id: req.body.vehicleId,
+          driver_id: req.body.driverId,
+          purpose: req.body.purpose,
+          destination: req.body.destination,
+          start_date: req.body.departureTime,
+          end_date: req.body.returnTime,
+          passengers: req.body.passengers,
+          notes: req.body.notes,
+        }
+      : req.body;
+
     const {
       vehicle_id,
       driver_id,
@@ -20,7 +36,7 @@ exports.createSchedule = async (req, res, next) => {
       end_date,
       passengers,
       notes,
-    } = req.body;
+    } = scheduleData;
 
     // Verify vehicle exists
     const vehicle = await Vehicle.findById(vehicle_id);
@@ -47,7 +63,18 @@ exports.createSchedule = async (req, res, next) => {
     });
 
     const schedule = await Schedule.findById(scheduleId);
-    successResponse(res, schedule, "Schedule created successfully", 201);
+    const transformedSchedule = transformSchedule(schedule);
+
+    // Emit real-time notification to driver
+    emitToUser(driver_id, "schedule:created", transformedSchedule);
+    emitToRole("scheduler", "schedule:created", transformedSchedule);
+
+    successResponse(
+      res,
+      transformedSchedule,
+      "Schedule created successfully",
+      201,
+    );
   } catch (error) {
     next(error);
   }
@@ -60,12 +87,13 @@ exports.getAllSchedules = async (req, res, next) => {
     const { status } = req.query;
 
     const schedules = await Schedule.findAll(limit, offset, status);
+    const transformedSchedules = schedules.map(transformSchedule);
     const total = await Schedule.count(status);
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(
       res,
-      schedules,
+      transformedSchedules,
       pagination,
       "Schedules retrieved successfully",
     );
@@ -83,7 +111,12 @@ exports.getScheduleById = async (req, res, next) => {
       return errorResponse(res, "Schedule not found", 404);
     }
 
-    successResponse(res, schedule, "Schedule retrieved successfully");
+    const transformedSchedule = transformSchedule(schedule);
+    successResponse(
+      res,
+      transformedSchedule,
+      "Schedule retrieved successfully",
+    );
   } catch (error) {
     next(error);
   }
@@ -123,7 +156,13 @@ exports.updateSchedule = async (req, res, next) => {
     });
 
     const updatedSchedule = await Schedule.findById(scheduleId);
-    successResponse(res, updatedSchedule, "Schedule updated successfully");
+    const transformedSchedule = transformSchedule(updatedSchedule);
+
+    // Emit real-time notification to driver and relevant roles
+    emitToUser(schedule.driver_id, "schedule:updated", transformedSchedule);
+    emitToRole("scheduler", "schedule:updated", transformedSchedule);
+
+    successResponse(res, transformedSchedule, "Schedule updated successfully");
   } catch (error) {
     next(error);
   }
