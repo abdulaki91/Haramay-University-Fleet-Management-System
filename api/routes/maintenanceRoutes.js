@@ -23,11 +23,11 @@ router.post(
   maintenanceController.createMaintenanceRequest,
 );
 
-// Get all maintenance requests (Vehicle Manager, Mechanic)
+// Get all maintenance requests (Vehicle Manager, Mechanic, Driver)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager", "mechanic"),
+  authorize("vehicle_manager", "mechanic", "driver"),
   maintenanceController.getAllMaintenanceRequests,
 );
 

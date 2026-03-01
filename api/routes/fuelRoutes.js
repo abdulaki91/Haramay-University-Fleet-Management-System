@@ -24,11 +24,11 @@ router.post(
   fuelController.addFuelRecord,
 );
 
-// Get all fuel records (Vehicle Manager)
+// Get all fuel records (Vehicle Manager, Driver)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("vehicle_manager", "driver"),
   fuelController.getAllFuelRecords,
 );
 

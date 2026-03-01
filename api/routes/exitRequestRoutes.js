@@ -22,11 +22,11 @@ router.post(
   exitRequestController.createExitRequest,
 );
 
-// Get all exit requests (Vehicle Manager)
+// Get all exit requests (Vehicle Manager, Driver, Security Guard)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("vehicle_manager", "driver", "security_guard"),
   exitRequestController.getAllExitRequests,
 );
 

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { scheduleService, vehicleService } from "@/api/services";
+import { scheduleService, vehicleService, userService } from "@/api/services";
 import DataTable from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -40,9 +40,14 @@ export default function SchedulesPage() {
     queryKey: ["vehicles"],
     queryFn: vehicleService.getAll,
   });
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: userService.getAll,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
     vehicleId: "",
+    driverId: "",
     destination: "",
     departureTime: "",
     returnTime: "",
@@ -61,8 +66,11 @@ export default function SchedulesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ ...form, driverId: user.id, status: "pending" });
+    createMutation.mutate({ ...form, status: "pending" });
   };
+
+  // Filter users to show only drivers
+  const drivers = users.filter((u) => u.role === "driver");
 
   const columns = [
     {
@@ -135,6 +143,30 @@ export default function SchedulesPage() {
                             {v.plateNumber} — {v.make} {v.model}
                           </SelectItem>
                         ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("schedules.driver")}</Label>
+                  <Select
+                    value={form.driverId}
+                    onValueChange={(v) => setForm({ ...form, driverId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("schedules.selectDriver")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          {t("schedules.noDrivers")}
+                        </div>
+                      ) : (
+                        drivers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.fullName} ({d.email})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
