@@ -86,9 +86,23 @@ exports.getAllSchedules = async (req, res, next) => {
     const { page, limit, offset } = getPagination(req);
     const { status } = req.query;
 
-    const schedules = await Schedule.findAll(limit, offset, status);
+    let schedules = await Schedule.findAll(limit, offset, status);
+
+    // Filter schedules for drivers - only show their own schedules
+    if (req.user.role_name === "driver") {
+      schedules = schedules.filter((s) => s.driver_id === req.user.id);
+    }
+
     const transformedSchedules = schedules.map(transformSchedule);
-    const total = await Schedule.count(status);
+
+    // Adjust total count for drivers
+    let total;
+    if (req.user.role_name === "driver") {
+      total = transformedSchedules.length;
+    } else {
+      total = await Schedule.count(status);
+    }
+
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(

@@ -10,14 +10,15 @@ class Vehicle {
       color,
       vin,
       capacity,
+      type,
       fuel_type,
       status,
       mileage,
     } = vehicleData;
 
     const [result] = await pool.query(
-      `INSERT INTO vehicles (plate_number, make, model, year, color, vin, capacity, fuel_type, status, mileage) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO vehicles (plate_number, make, model, year, color, vin, capacity, type, fuel_type, status, mileage) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         plate_number,
         make,
@@ -26,6 +27,7 @@ class Vehicle {
         color,
         vin,
         capacity,
+        type,
         fuel_type,
         status || "available",
         mileage || 0,

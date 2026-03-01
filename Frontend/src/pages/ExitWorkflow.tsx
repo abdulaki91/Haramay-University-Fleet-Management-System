@@ -40,7 +40,7 @@ export default function ExitWorkflowPage() {
     queryKey: ["vehicles"],
     queryFn: vehicleService.getAll,
   });
-  const { data: schedules = [] } = useQuery({
+  const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
     queryKey: ["schedules"],
     queryFn: scheduleService.getAll,
   });
@@ -50,6 +50,13 @@ export default function ExitWorkflowPage() {
     scheduleId: "",
     reason: "",
   });
+
+  // Filter schedules for the current driver and only approved/pending schedules
+  const driverSchedules = schedules.filter(
+    (s) =>
+      s.driverId === user.id &&
+      (s.status === "approved" || s.status === "pending"),
+  );
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<ExitRequest>) => exitService.create(data),
@@ -154,17 +161,34 @@ export default function ExitWorkflowPage() {
                     onValueChange={(v) => setForm({ ...form, scheduleId: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("exit.schedule")} />
+                      <SelectValue
+                        placeholder={
+                          driverSchedules.length === 0
+                            ? t("exit.noSchedules")
+                            : t("exit.schedule")
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {schedules.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.destination} —{" "}
-                          {new Date(s.departureTime).toLocaleDateString()}
-                        </SelectItem>
-                      ))}
+                      {driverSchedules.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          {t("exit.noSchedulesAvailable")}
+                        </div>
+                      ) : (
+                        driverSchedules.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.destination} —{" "}
+                            {new Date(s.departureTime).toLocaleDateString()}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {driverSchedules.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("exit.scheduleRequired")}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{t("exit.reason")}</Label>

@@ -68,7 +68,7 @@ const getNavItems = (t: any): NavItemDef[] => [
     label: t("nav.fuel"),
     path: "/fuel",
     icon: <Fuel size={20} />,
-    roles: ["vehicle_manager"],
+    roles: ["vehicle_manager", "driver"],
   },
   {
     label: t("nav.maintenance"),

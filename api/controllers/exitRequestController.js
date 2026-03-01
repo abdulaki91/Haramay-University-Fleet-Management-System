@@ -48,15 +48,29 @@ exports.createExitRequest = async (req, res, next) => {
   }
 };
 
-// Get all exit requests (Vehicle Manager)
+// Get all exit requests (Vehicle Manager, Driver)
 exports.getAllExitRequests = async (req, res, next) => {
   try {
     const { page, limit, offset } = getPagination(req);
     const { status } = req.query;
 
-    const requests = await ExitRequest.findAll(limit, offset, status);
+    let requests = await ExitRequest.findAll(limit, offset, status);
+
+    // Filter exit requests for drivers - only show their own requests
+    if (req.user.role_name === "driver") {
+      requests = requests.filter((r) => r.driver_id === req.user.id);
+    }
+
     const transformedRequests = requests.map(transformExitRequest);
-    const total = await ExitRequest.count(status);
+
+    // Adjust total count for drivers
+    let total;
+    if (req.user.role_name === "driver") {
+      total = transformedRequests.length;
+    } else {
+      total = await ExitRequest.count(status);
+    }
+
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(

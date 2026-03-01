@@ -11,15 +11,25 @@ router.post(
   [
     authenticate,
     authorize("vehicle_manager"),
-    body("plate_number").notEmpty().withMessage("Plate number is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      if (!req.body.plateNumber && !req.body.plate_number) {
+        throw new Error("Plate number is required");
+      }
+      if (!req.body.fuelType && !req.body.fuel_type) {
+        throw new Error("Fuel type is required");
+      }
+      const fuelType = req.body.fuelType || req.body.fuel_type;
+      if (!["petrol", "diesel", "electric", "hybrid"].includes(fuelType)) {
+        throw new Error("Valid fuel type is required");
+      }
+      return true;
+    }),
     body("make").notEmpty().withMessage("Make is required"),
     body("model").notEmpty().withMessage("Model is required"),
     body("year")
       .isInt({ min: 1900, max: 2100 })
       .withMessage("Valid year is required"),
-    body("fuel_type")
-      .isIn(["petrol", "diesel", "electric", "hybrid"])
-      .withMessage("Valid fuel type is required"),
     validate,
   ],
   vehicleController.registerVehicle,

@@ -46,15 +46,29 @@ exports.createMaintenanceRequest = async (req, res, next) => {
   }
 };
 
-// Get all maintenance requests (Vehicle Manager, Mechanic)
+// Get all maintenance requests (Vehicle Manager, Mechanic, Driver)
 exports.getAllMaintenanceRequests = async (req, res, next) => {
   try {
     const { page, limit, offset } = getPagination(req);
     const { status } = req.query;
 
-    const requests = await MaintenanceRequest.findAll(limit, offset, status);
+    let requests = await MaintenanceRequest.findAll(limit, offset, status);
+
+    // Filter maintenance requests for drivers - only show their own requests
+    if (req.user.role_name === "driver") {
+      requests = requests.filter((r) => r.requested_by === req.user.id);
+    }
+
     const transformedRequests = requests.map(transformMaintenanceRequest);
-    const total = await MaintenanceRequest.count(status);
+
+    // Adjust total count for drivers
+    let total;
+    if (req.user.role_name === "driver") {
+      total = transformedRequests.length;
+    } else {
+      total = await MaintenanceRequest.count(status);
+    }
+
     const pagination = getPaginationMeta(page, limit, total);
 
     paginatedResponse(

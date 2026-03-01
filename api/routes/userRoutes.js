@@ -13,7 +13,7 @@ router.post(
   "/",
   [
     authenticate,
-    authorize("admin"),
+    authorize("system_admin"),
     body("first_name").notEmpty().withMessage("First name is required"),
     body("last_name").notEmpty().withMessage("Last name is required"),
     body("email").isEmail().withMessage("Valid email is required"),
@@ -27,13 +27,18 @@ router.post(
 );
 
 // Get all users (Admin only)
-router.get("/", authenticate, authorize("admin"), userController.getAllUsers);
+router.get(
+  "/",
+  authenticate,
+  authorize("system_admin"),
+  userController.getAllUsers,
+);
 
 // Get user by ID (Admin only)
 router.get(
   "/:id",
   authenticate,
-  authorize("admin"),
+  authorize("system_admin"),
   userController.getUserById,
 );
 
@@ -42,7 +47,7 @@ router.put(
   "/:id",
   [
     authenticate,
-    authorize("admin"),
+    authorize("system_admin"),
     body("email").optional().isEmail().withMessage("Valid email is required"),
     validate,
   ],
@@ -53,7 +58,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("admin"),
+  authorize("system_admin"),
   userController.deleteUser,
 );
 
@@ -62,7 +67,7 @@ router.put(
   "/:id/role",
   [
     authenticate,
-    authorize("admin"),
+    authorize("system_admin"),
     body("role_id").isInt().withMessage("Valid role ID is required"),
     validate,
   ],

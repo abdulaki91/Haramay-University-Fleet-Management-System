@@ -7,7 +7,7 @@ const { authenticate, authorize } = require("../middlewares/auth");
 router.get(
   "/vehicles",
   authenticate,
-  authorize("admin", "vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   reportController.getVehicleSummaryReport,
 );
 
@@ -15,7 +15,7 @@ router.get(
 router.get(
   "/maintenance",
   authenticate,
-  authorize("admin", "vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   reportController.getMaintenanceReport,
 );
 
@@ -23,7 +23,7 @@ router.get(
 router.get(
   "/fuel",
   authenticate,
-  authorize("admin", "vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   reportController.getFuelUsageReport,
 );
 
@@ -31,7 +31,7 @@ router.get(
 router.get(
   "/system",
   authenticate,
-  authorize("admin"),
+  authorize("system_admin"),
   reportController.getSystemReport,
 );
 

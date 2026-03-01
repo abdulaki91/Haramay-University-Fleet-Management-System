@@ -11,12 +11,28 @@ router.post(
   [
     authenticate,
     authorize("scheduler"),
-    body("vehicle_id").isInt().withMessage("Valid vehicle ID is required"),
-    body("driver_id").isInt().withMessage("Valid driver ID is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      // Check vehicle_id or vehicleId
+      if (!req.body.vehicleId && !req.body.vehicle_id) {
+        throw new Error("Vehicle ID is required");
+      }
+      // Check driver_id or driverId
+      if (!req.body.driverId && !req.body.driver_id) {
+        throw new Error("Driver ID is required");
+      }
+      // Check start_date or departureTime
+      if (!req.body.departureTime && !req.body.start_date) {
+        throw new Error("Departure time is required");
+      }
+      // Check end_date or returnTime
+      if (!req.body.returnTime && !req.body.end_date) {
+        throw new Error("Return time is required");
+      }
+      return true;
+    }),
     body("purpose").notEmpty().withMessage("Purpose is required"),
     body("destination").notEmpty().withMessage("Destination is required"),
-    body("start_date").isISO8601().withMessage("Valid start date is required"),
-    body("end_date").isISO8601().withMessage("Valid end date is required"),
     validate,
   ],
   scheduleController.createSchedule,
@@ -26,7 +42,7 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorize("admin", "scheduler", "driver", "user"),
+  authorize("system_admin", "scheduler", "driver", "user", "vehicle_manager"),
   scheduleController.getAllSchedules,
 );
 
@@ -34,7 +50,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorize("admin", "scheduler", "driver", "user"),
+  authorize("system_admin", "scheduler", "driver", "user", "vehicle_manager"),
   scheduleController.getScheduleById,
 );
 
