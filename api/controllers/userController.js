@@ -51,9 +51,9 @@ exports.createUser = async (req, res, next) => {
       password: "[HIDDEN]",
     });
 
-    // Validate required fields
-    if (!first_name || !last_name) {
-      return errorResponse(res, "First name and last name are required", 400);
+    // Validate required fields (last_name can be empty for single names)
+    if (!first_name) {
+      return errorResponse(res, "First name is required", 400);
     }
     if (!username) {
       return errorResponse(res, "Username is required", 400);
