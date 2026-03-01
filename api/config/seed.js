@@ -111,8 +111,8 @@ async function seed() {
 
       if (roleResult.length > 0) {
         await connection.query(
-          `INSERT IGNORE INTO users (first_name, last_name, username, email, password, phone, role_id) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT IGNORE INTO users (first_name, last_name, username, email, password, phone, role_id, password_changed) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
           [
             user.firstName,
             user.lastName,
