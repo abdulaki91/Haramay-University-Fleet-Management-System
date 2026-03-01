@@ -54,7 +54,7 @@ export default function ExitWorkflowPage() {
   // Filter schedules for the current driver and only approved/pending schedules
   const driverSchedules = schedules.filter(
     (s) =>
-      s.driverId === user.id &&
+      String(s.driverId) === String(user.id) &&
       (s.status === "approved" || s.status === "pending"),
   );
 

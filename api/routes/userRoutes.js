@@ -26,11 +26,11 @@ router.post(
   userController.createUser,
 );
 
-// Get all users (Admin only)
+// Get all users (Admin, Scheduler - for driver selection)
 router.get(
   "/",
   authenticate,
-  authorize("system_admin"),
+  authorize("system_admin", "scheduler"),
   userController.getAllUsers,
 );
 

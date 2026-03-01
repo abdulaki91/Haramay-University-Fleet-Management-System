@@ -40,9 +40,10 @@ export default function SchedulesPage() {
     queryKey: ["vehicles"],
     queryFn: vehicleService.getAll,
   });
-  const { data: users = [] } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["users"],
     queryFn: userService.getAll,
+    enabled: canCreate, // Only fetch users if user is a scheduler
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({

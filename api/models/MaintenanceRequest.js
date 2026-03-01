@@ -53,7 +53,7 @@ class MaintenanceRequest {
       params.push(status);
     }
 
-    query += " ORDER BY mr.created_at DESC LIMIT ? OFFSET ?";
+    query += " ORDER BY mr.requested_at DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const [rows] = await pool.query(query, params);

@@ -33,17 +33,33 @@ export default function DashboardPage() {
     queryKey: ["schedules"],
     queryFn: scheduleService.getAll,
   });
+
+  // Only fetch exit requests for roles that have access
   const { data: exitRequests = [] } = useQuery({
     queryKey: ["exitRequests"],
     queryFn: exitService.getAll,
+    enabled: [
+      "vehicle_manager",
+      "driver",
+      "security_guard",
+      "system_admin",
+    ].includes(user.role),
   });
+
+  // Only fetch maintenance for roles that have access
   const { data: maintenance = [] } = useQuery({
     queryKey: ["maintenance"],
     queryFn: maintenanceService.getAll,
+    enabled: ["vehicle_manager", "mechanic", "driver", "system_admin"].includes(
+      user.role,
+    ),
   });
+
+  // Only fetch fuel records for roles that have access
   const { data: fuelRecords = [] } = useQuery({
     queryKey: ["fuel"],
     queryFn: fuelService.getAll,
+    enabled: ["vehicle_manager", "driver", "system_admin"].includes(user.role),
   });
 
   const stats = [
