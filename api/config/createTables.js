@@ -23,6 +23,7 @@ const createTables = async (connection) => {
         phone VARCHAR(20),
         role_id INT NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
+        password_changed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
