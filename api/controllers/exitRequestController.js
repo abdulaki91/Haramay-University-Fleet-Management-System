@@ -12,14 +12,40 @@ const { transformExitRequest } = require("../utils/transformer");
 // Create exit request (Driver only)
 exports.createExitRequest = async (req, res, next) => {
   try {
+    console.log("Exit request body:", req.body);
+
+    // Accept both camelCase and snake_case
+    const exitData = req.body.vehicleId
+      ? {
+          vehicle_id: req.body.vehicleId,
+          driver_id: req.body.driverId || req.user.id,
+          schedule_id: req.body.scheduleId,
+          destination: req.body.destination,
+          purpose: req.body.purpose,
+          expected_return: req.body.expectedReturn,
+          notes: req.body.notes,
+        }
+      : req.body;
+
     const {
       vehicle_id,
+      driver_id,
       schedule_id,
       destination,
       purpose,
       expected_return,
       notes,
-    } = req.body;
+    } = exitData;
+
+    console.log("Processed exit data:", {
+      vehicle_id,
+      driver_id,
+      schedule_id,
+      destination,
+      purpose,
+      expected_return,
+      notes,
+    });
 
     // Verify vehicle exists
     const vehicle = await Vehicle.findById(vehicle_id);
@@ -29,7 +55,7 @@ exports.createExitRequest = async (req, res, next) => {
 
     const requestId = await ExitRequest.create({
       vehicle_id,
-      driver_id: req.user.id,
+      driver_id: driver_id || req.user.id,
       schedule_id,
       destination,
       purpose,
@@ -38,12 +64,19 @@ exports.createExitRequest = async (req, res, next) => {
     });
 
     const exitRequest = await ExitRequest.findById(requestId);
+    const transformedRequest = transformExitRequest(exitRequest);
 
     // Emit real-time notification to vehicle managers
-    emitToRole("vehicle_manager", "exit_request:created", exitRequest);
+    emitToRole("vehicle_manager", "exit_request:created", transformedRequest);
 
-    successResponse(res, exitRequest, "Exit request created successfully", 201);
+    successResponse(
+      res,
+      transformedRequest,
+      "Exit request created successfully",
+      201,
+    );
   } catch (error) {
+    console.error("Exit request creation error:", error);
     next(error);
   }
 };

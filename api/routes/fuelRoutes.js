@@ -11,14 +11,29 @@ router.post(
   [
     authenticate,
     authorize("driver", "vehicle_manager"),
-    body("vehicle_id").isInt().withMessage("Valid vehicle ID is required"),
-    body("fuel_amount")
-      .isFloat({ min: 0 })
-      .withMessage("Valid fuel amount is required"),
-    body("cost").isFloat({ min: 0 }).withMessage("Valid cost is required"),
-    body("odometer_reading")
-      .isFloat({ min: 0 })
-      .withMessage("Valid odometer reading is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      console.log("Fuel validation - Request body:", req.body);
+
+      if (!req.body.vehicleId && !req.body.vehicle_id) {
+        throw new Error("Vehicle ID is required");
+      }
+      if (!req.body.liters && !req.body.fuel_amount) {
+        throw new Error("Fuel amount is required");
+      }
+      // Accept either totalCost, cost, or (liters * costPerLiter)
+      if (
+        !req.body.cost &&
+        !req.body.totalCost &&
+        !(req.body.liters && req.body.costPerLiter)
+      ) {
+        throw new Error("Cost is required");
+      }
+      if (!req.body.odometerReading && !req.body.odometer_reading) {
+        throw new Error("Odometer reading is required");
+      }
+      return true;
+    }),
     validate,
   ],
   fuelController.addFuelRecord,

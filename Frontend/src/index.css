@@ -177,3 +177,20 @@
     }
   }
 }
+
+/* Fix for Select component text visibility */
+[data-radix-select-trigger] {
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-radix-select-trigger] span {
+  color: hsl(var(--foreground)) !important;
+}
+
+button[role="combobox"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+button[role="combobox"] span {
+  color: hsl(var(--foreground)) !important;
+}

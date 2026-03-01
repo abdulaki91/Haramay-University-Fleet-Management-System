@@ -11,15 +11,43 @@ const { transformFuelRecord } = require("../utils/transformer");
 // Add fuel record
 exports.addFuelRecord = async (req, res, next) => {
   try {
+    console.log("Fuel record body:", req.body);
+
+    // Accept both camelCase and snake_case
+    const fuelData = req.body.vehicleId
+      ? {
+          vehicle_id: req.body.vehicleId,
+          driver_id: req.body.driverId || req.user.id,
+          fuel_amount: req.body.liters,
+          cost: req.body.totalCost || req.body.liters * req.body.costPerLiter,
+          odometer_reading: req.body.odometerReading,
+          fuel_station: req.body.station,
+          receipt_number: req.body.receiptNumber,
+          notes: req.body.notes,
+        }
+      : req.body;
+
     const {
       vehicle_id,
+      driver_id,
       fuel_amount,
       cost,
       odometer_reading,
       fuel_station,
       receipt_number,
       notes,
-    } = req.body;
+    } = fuelData;
+
+    console.log("Processed fuel data:", {
+      vehicle_id,
+      driver_id,
+      fuel_amount,
+      cost,
+      odometer_reading,
+      fuel_station,
+      receipt_number,
+      notes,
+    });
 
     // Verify vehicle exists
     const vehicle = await Vehicle.findById(vehicle_id);
@@ -29,7 +57,7 @@ exports.addFuelRecord = async (req, res, next) => {
 
     const fuelId = await FuelRecord.create({
       vehicle_id,
-      driver_id: req.user.id,
+      driver_id: driver_id || req.user.id,
       fuel_amount,
       cost,
       odometer_reading,
@@ -39,8 +67,16 @@ exports.addFuelRecord = async (req, res, next) => {
     });
 
     const fuelRecord = await FuelRecord.findById(fuelId);
-    successResponse(res, fuelRecord, "Fuel record added successfully", 201);
+    const transformedRecord = transformFuelRecord(fuelRecord);
+
+    successResponse(
+      res,
+      transformedRecord,
+      "Fuel record added successfully",
+      201,
+    );
   } catch (error) {
+    console.error("Fuel record creation error:", error);
     next(error);
   }
 };

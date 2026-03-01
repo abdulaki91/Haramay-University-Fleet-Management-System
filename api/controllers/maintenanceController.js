@@ -12,7 +12,34 @@ const { transformMaintenanceRequest } = require("../utils/transformer");
 // Create maintenance request (Driver only)
 exports.createMaintenanceRequest = async (req, res, next) => {
   try {
-    const { vehicle_id, title, description, priority, notes } = req.body;
+    console.log("Maintenance request body:", req.body);
+
+    // Accept both camelCase and snake_case
+    const maintenanceData = req.body.vehicleId
+      ? {
+          vehicle_id: req.body.vehicleId,
+          requested_by: req.body.requestedBy || req.user.id,
+          title:
+            req.body.title ||
+            req.body.description?.substring(0, 100) ||
+            "Maintenance Request",
+          description: req.body.description,
+          priority: req.body.priority,
+          notes: req.body.notes,
+        }
+      : req.body;
+
+    const { vehicle_id, requested_by, title, description, priority, notes } =
+      maintenanceData;
+
+    console.log("Processed maintenance data:", {
+      vehicle_id,
+      requested_by,
+      title,
+      description,
+      priority,
+      notes,
+    });
 
     // Verify vehicle exists
     const vehicle = await Vehicle.findById(vehicle_id);
@@ -22,7 +49,7 @@ exports.createMaintenanceRequest = async (req, res, next) => {
 
     const requestId = await MaintenanceRequest.create({
       vehicle_id,
-      requested_by: req.user.id,
+      requested_by: requested_by || req.user.id,
       title,
       description,
       priority,
@@ -30,18 +57,20 @@ exports.createMaintenanceRequest = async (req, res, next) => {
     });
 
     const maintenanceRequest = await MaintenanceRequest.findById(requestId);
+    const transformedRequest = transformMaintenanceRequest(maintenanceRequest);
 
     // Emit real-time notification to vehicle managers and mechanics
-    emitToRole("vehicle_manager", "maintenance:created", maintenanceRequest);
-    emitToRole("mechanic", "maintenance:created", maintenanceRequest);
+    emitToRole("vehicle_manager", "maintenance:created", transformedRequest);
+    emitToRole("mechanic", "maintenance:created", transformedRequest);
 
     successResponse(
       res,
-      maintenanceRequest,
+      transformedRequest,
       "Maintenance request created successfully",
       201,
     );
   } catch (error) {
+    console.error("Maintenance request creation error:", error);
     next(error);
   }
 };

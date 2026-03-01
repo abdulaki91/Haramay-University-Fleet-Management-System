@@ -48,7 +48,7 @@ export interface Schedule {
   destination: string;
   departureTime: string;
   returnTime: string;
-  status: "pending" | "approved" | "in_progress" | "completed" | "cancelled";
+  status: "scheduled" | "in_progress" | "completed" | "cancelled";
   purpose: string;
   passengers: number;
   createdAt: string;

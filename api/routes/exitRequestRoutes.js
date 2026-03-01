@@ -11,12 +11,24 @@ router.post(
   [
     authenticate,
     authorize("driver"),
-    body("vehicle_id").isInt().withMessage("Valid vehicle ID is required"),
-    body("destination").notEmpty().withMessage("Destination is required"),
-    body("purpose").notEmpty().withMessage("Purpose is required"),
-    body("expected_return")
-      .isISO8601()
-      .withMessage("Valid expected return date is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      console.log("Validation - Request body:", req.body);
+
+      if (!req.body.vehicleId && !req.body.vehicle_id) {
+        throw new Error("Vehicle ID is required");
+      }
+      if (!req.body.destination) {
+        throw new Error("Destination is required");
+      }
+      if (!req.body.purpose) {
+        throw new Error("Purpose is required");
+      }
+      if (!req.body.expectedReturn && !req.body.expected_return) {
+        throw new Error("Expected return date is required");
+      }
+      return true;
+    }),
     validate,
   ],
   exitRequestController.createExitRequest,

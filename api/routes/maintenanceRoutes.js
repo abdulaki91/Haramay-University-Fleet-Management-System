@@ -11,13 +11,24 @@ router.post(
   [
     authenticate,
     authorize("driver"),
-    body("vehicle_id").isInt().withMessage("Valid vehicle ID is required"),
-    body("title").notEmpty().withMessage("Title is required"),
-    body("description").notEmpty().withMessage("Description is required"),
-    body("priority")
-      .optional()
-      .isIn(["low", "medium", "high", "critical"])
-      .withMessage("Valid priority is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      console.log("Maintenance validation - Request body:", req.body);
+
+      if (!req.body.vehicleId && !req.body.vehicle_id) {
+        throw new Error("Vehicle ID is required");
+      }
+      if (!req.body.description) {
+        throw new Error("Description is required");
+      }
+      if (
+        req.body.priority &&
+        !["low", "medium", "high", "critical"].includes(req.body.priority)
+      ) {
+        throw new Error("Valid priority is required");
+      }
+      return true;
+    }),
     validate,
   ],
   maintenanceController.createMaintenanceRequest,

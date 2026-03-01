@@ -10,7 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -40,7 +39,7 @@ export default function ExitWorkflowPage() {
     queryKey: ["vehicles"],
     queryFn: vehicleService.getAll,
   });
-  const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
+  const { data: schedules = [] } = useQuery({
     queryKey: ["schedules"],
     queryFn: scheduleService.getAll,
   });
@@ -51,19 +50,33 @@ export default function ExitWorkflowPage() {
     reason: "",
   });
 
-  // Filter schedules for the current driver and only approved/pending schedules
+  // Filter schedules for the current driver and only scheduled/in_progress schedules
   const driverSchedules = schedules.filter(
     (s) =>
       String(s.driverId) === String(user.id) &&
-      (s.status === "approved" || s.status === "pending"),
+      (s.status === "scheduled" || s.status === "in_progress"),
   );
 
+  console.log("All schedules:", schedules);
+  console.log("Driver schedules:", driverSchedules);
+  console.log("Current user ID:", user.id);
+
   const createMutation = useMutation({
-    mutationFn: (data: Partial<ExitRequest>) => exitService.create(data),
+    mutationFn: (data: any) => exitService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exitRequests"] });
       setDialogOpen(false);
+      setForm({ vehicleId: "", scheduleId: "", reason: "" });
       toast({ title: t("exit.exitRequested") });
+    },
+    onError: (error: any) => {
+      console.error("Exit request error:", error);
+      toast({
+        title: t("common.error"),
+        description:
+          error.response?.data?.message || "Failed to create exit request",
+        variant: "destructive",
+      });
     },
   });
 
@@ -83,7 +96,53 @@ export default function ExitWorkflowPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ ...form, driverId: user.id });
+
+    console.log("Form data:", form);
+    console.log("Driver schedules:", driverSchedules);
+
+    // Validate schedule is selected
+    if (!form.scheduleId || form.scheduleId === "") {
+      toast({
+        title: t("common.error"),
+        description: "Please select a schedule",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the selected schedule to extract destination and return time
+    const selectedSchedule = driverSchedules.find(
+      (s) => String(s.id) === String(form.scheduleId),
+    );
+
+    console.log("Selected schedule:", selectedSchedule);
+
+    if (!selectedSchedule) {
+      toast({
+        title: t("common.error"),
+        description: "Selected schedule not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use vehicle from schedule if not selected
+    const vehicleId = form.vehicleId || selectedSchedule.vehicleId;
+
+    // Prepare data in the format backend expects
+    const exitRequestData = {
+      vehicle_id: String(vehicleId),
+      driver_id: String(user.id),
+      schedule_id: String(form.scheduleId),
+      destination: selectedSchedule.destination,
+      purpose: form.reason || selectedSchedule.purpose,
+      expected_return: selectedSchedule.returnTime,
+      notes: form.reason,
+    };
+
+    console.log("Submitting exit request:", exitRequestData);
+
+    createMutation.mutate(exitRequestData);
   };
 
   const getPlate = (id: string) =>
@@ -137,28 +196,22 @@ export default function ExitWorkflowPage() {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{t("exit.vehicle")}</Label>
-                  <Select
-                    value={form.vehicleId}
-                    onValueChange={(v) => setForm({ ...form, vehicleId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("exit.vehicle")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicles.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.plateNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("exit.schedule")}</Label>
+                  <Label>{t("exit.schedule")} *</Label>
                   <Select
                     value={form.scheduleId}
-                    onValueChange={(v) => setForm({ ...form, scheduleId: v })}
+                    onValueChange={(v) => {
+                      console.log("Schedule selected:", v);
+                      const schedule = driverSchedules.find(
+                        (s) => String(s.id) === String(v),
+                      );
+                      console.log("Found schedule:", schedule);
+                      setForm({
+                        ...form,
+                        scheduleId: v,
+                        vehicleId: schedule?.vehicleId || "",
+                      });
+                    }}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue
@@ -176,7 +229,7 @@ export default function ExitWorkflowPage() {
                         </div>
                       ) : (
                         driverSchedules.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
+                          <SelectItem key={s.id} value={String(s.id)}>
                             {s.destination} —{" "}
                             {new Date(s.departureTime).toLocaleDateString()}
                           </SelectItem>
@@ -189,6 +242,23 @@ export default function ExitWorkflowPage() {
                       {t("exit.scheduleRequired")}
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("exit.vehicle")}</Label>
+                  <Select value={form.vehicleId} disabled>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          form.vehicleId
+                            ? getPlate(form.vehicleId)
+                            : "Select schedule first"
+                        }
+                      />
+                    </SelectTrigger>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Vehicle is auto-selected from schedule
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>{t("exit.reason")}</Label>

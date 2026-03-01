@@ -67,7 +67,7 @@ export default function SchedulesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ ...form, status: "pending" });
+    createMutation.mutate({ ...form, status: "scheduled" });
   };
 
   // Filter users to show only drivers
