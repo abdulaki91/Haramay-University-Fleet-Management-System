@@ -14,13 +14,30 @@ router.post(
   [
     authenticate,
     authorize("system_admin"),
-    body("first_name").notEmpty().withMessage("First name is required"),
-    body("last_name").notEmpty().withMessage("Last name is required"),
-    body("email").isEmail().withMessage("Valid email is required"),
-    body("password")
-      .isLength({ min: 6 })
-      .withMessage("Password must be at least 6 characters"),
-    body("role_id").isInt().withMessage("Valid role ID is required"),
+    // Accept both camelCase and snake_case
+    body().custom((value, { req }) => {
+      console.log("User validation - Request body:", req.body);
+
+      // Check for fullName or first_name/last_name
+      if (!req.body.fullName && (!req.body.first_name || !req.body.last_name)) {
+        throw new Error("Full name or first name and last name are required");
+      }
+
+      if (!req.body.username) {
+        throw new Error("Username is required");
+      }
+
+      if (!req.body.email) {
+        throw new Error("Email is required");
+      }
+
+      // Check for role or role_id
+      if (!req.body.role && !req.body.role_id && !req.body.roleId) {
+        throw new Error("Role is required");
+      }
+
+      return true;
+    }),
     validate,
   ],
   userController.createUser,

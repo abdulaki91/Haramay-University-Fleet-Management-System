@@ -39,6 +39,17 @@ class User {
     return rows[0];
   }
 
+  static async findByUsername(username) {
+    const [rows] = await pool.query(
+      `SELECT u.*, r.name as role_name 
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       WHERE u.username = ?`,
+      [username],
+    );
+    return rows[0];
+  }
+
   static async findAll(limit, offset) {
     const [rows] = await pool.query(
       `SELECT u.id, u.first_name, u.last_name, u.username, u.email, u.phone, u.is_active,

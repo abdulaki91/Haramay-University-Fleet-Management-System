@@ -43,11 +43,29 @@ export default function UserManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<User>) => userService.create(data),
+    mutationFn: (data: Partial<User>) => {
+      console.log("Creating user with data:", data);
+      return userService.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setDialogOpen(false);
+      setForm({ fullName: "", email: "", username: "", role: "user" });
       toast({ title: t("users.userCreated") });
+    },
+    onError: (error: any) => {
+      console.error("User creation error:", error);
+      console.error("Error response:", error.response);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to create user";
+      toast({
+        title: t("common.error"),
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 
@@ -56,6 +74,14 @@ export default function UserManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast({ title: t("users.userDeleted") });
+    },
+    onError: (error: any) => {
+      console.error("User deletion error:", error);
+      toast({
+        title: t("common.error"),
+        description: error.response?.data?.message || "Failed to delete user",
+        variant: "destructive",
+      });
     },
   });
 
@@ -78,13 +104,25 @@ export default function UserManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting user form:", form);
+
     if (editingUser) {
       userService
         .update(editingUser.id, { ...form, isActive: true })
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["users"] });
           setDialogOpen(false);
+          setForm({ fullName: "", email: "", username: "", role: "user" });
           toast({ title: t("users.userUpdated") });
+        })
+        .catch((error) => {
+          console.error("User update error:", error);
+          toast({
+            title: t("common.error"),
+            description:
+              error.response?.data?.message || "Failed to update user",
+            variant: "destructive",
+          });
         });
     } else {
       createMutation.mutate({ ...form, isActive: true });
