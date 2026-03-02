@@ -23,7 +23,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import type { MaintenanceRequest } from "@/types";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -31,6 +31,7 @@ export default function MaintenancePage() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user)!;
   const canCreate = user.role === "driver";
+  const canUpdate = user.role === "mechanic" || user.role === "vehicle_manager";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: requests = [], isLoading } = useQuery({
@@ -42,12 +43,21 @@ export default function MaintenancePage() {
     queryFn: vehicleService.getAll,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] =
+    useState<MaintenanceRequest | null>(null);
   const [form, setForm] = useState({
     vehicleId: "",
     type: "routine" as MaintenanceRequest["type"],
     description: "",
     priority: "medium" as MaintenanceRequest["priority"],
     estimatedCost: 0,
+  });
+  const [updateForm, setUpdateForm] = useState({
+    status: "pending" as MaintenanceRequest["status"],
+    notes: "",
+    estimatedCost: 0,
+    actualCost: 0,
   });
 
   const createMutation = useMutation({
@@ -60,9 +70,48 @@ export default function MaintenancePage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      maintenanceService.updateStatus(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["maintenance"] });
+      setUpdateDialogOpen(false);
+      toast({ title: "Maintenance request updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "Failed to update maintenance request",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({ ...form, requestedBy: user.id });
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRequest) return;
+    updateMutation.mutate({
+      id: selectedRequest.id,
+      data: updateForm,
+    });
+  };
+
+  const openUpdateDialog = (request: MaintenanceRequest) => {
+    setSelectedRequest(request);
+    setUpdateForm({
+      status: request.status,
+      notes: request.notes || "",
+      estimatedCost: request.estimatedCost || 0,
+      actualCost: request.actualCost || 0,
+    });
+    setUpdateDialogOpen(true);
   };
 
   const getPlate = (id: string) =>
@@ -104,6 +153,24 @@ export default function MaintenancePage() {
       render: (m: MaintenanceRequest) =>
         new Date(m.requestedAt).toLocaleDateString(),
     },
+    ...(canUpdate
+      ? [
+          {
+            key: "actions",
+            label: "Actions",
+            render: (m: MaintenanceRequest) => (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openUpdateDialog(m)}
+              >
+                <Edit size={14} className="mr-1" />
+                Update
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (isLoading)
@@ -239,6 +306,113 @@ export default function MaintenancePage() {
         data={requests}
         searchKeys={["description"]}
       />
+
+      {/* Update Status Dialog */}
+      <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Maintenance Request</DialogTitle>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg space-y-1">
+                <p className="text-sm font-medium">
+                  Vehicle: {getPlate(selectedRequest.vehicleId)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedRequest.description}
+                </p>
+              </div>
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={updateForm.status}
+                    onValueChange={(v) =>
+                      setUpdateForm({
+                        ...updateForm,
+                        status: v as MaintenanceRequest["status"],
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["pending", "in_progress", "completed", "cancelled"].map(
+                        (status) => (
+                          <SelectItem
+                            key={status}
+                            value={status}
+                            className="capitalize"
+                          >
+                            {status.replace("_", " ")}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Estimated Cost (ETB)</Label>
+                    <Input
+                      type="number"
+                      value={updateForm.estimatedCost}
+                      onChange={(e) =>
+                        setUpdateForm({
+                          ...updateForm,
+                          estimatedCost: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Actual Cost (ETB)</Label>
+                    <Input
+                      type="number"
+                      value={updateForm.actualCost}
+                      onChange={(e) =>
+                        setUpdateForm({
+                          ...updateForm,
+                          actualCost: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={updateForm.notes}
+                    onChange={(e) =>
+                      setUpdateForm({ ...updateForm, notes: e.target.value })
+                    }
+                    placeholder="Add notes about the work done..."
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setUpdateDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? "Updating..." : "Update"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

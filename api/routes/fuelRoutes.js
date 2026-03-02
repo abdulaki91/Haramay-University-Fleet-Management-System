@@ -5,12 +5,12 @@ const fuelController = require("../controllers/fuelController");
 const { authenticate, authorize } = require("../middlewares/auth");
 const validate = require("../middlewares/validate");
 
-// Add fuel record (Driver, Vehicle Manager)
+// Add fuel record (Vehicle Manager only)
 router.post(
   "/",
   [
     authenticate,
-    authorize("driver", "vehicle_manager"),
+    authorize("vehicle_manager"),
     // Accept both camelCase and snake_case
     body().custom((value, { req }) => {
       console.log("Fuel validation - Request body:", req.body);
@@ -39,11 +39,11 @@ router.post(
   fuelController.addFuelRecord,
 );
 
-// Get all fuel records (Vehicle Manager, Driver)
+// Get all fuel records (Vehicle Manager only)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager", "driver"),
+  authorize("vehicle_manager"),
   fuelController.getAllFuelRecords,
 );
 

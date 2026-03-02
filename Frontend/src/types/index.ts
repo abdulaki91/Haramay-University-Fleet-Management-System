@@ -89,6 +89,7 @@ export interface MaintenanceRequest {
   status: "pending" | "in_progress" | "completed" | "cancelled";
   estimatedCost?: number;
   actualCost?: number;
+  notes?: string;
   requestedAt: string;
   completedAt?: string;
 }
