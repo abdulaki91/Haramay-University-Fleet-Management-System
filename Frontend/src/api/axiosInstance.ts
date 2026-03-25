@@ -21,7 +21,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only redirect to login if it's a 401 error AND we're not already on the login page
+    // AND we have a token (meaning we were previously authenticated)
+    if (
+      error.response?.status === 401 &&
+      window.location.pathname !== "/login" &&
+      useAuthStore.getState().token
+    ) {
       useAuthStore.getState().logout();
       window.location.href = "/login";
     }

@@ -31,6 +31,7 @@ export default function LoginPage() {
         title: t("auth.loginFailed"),
         description: error.message || t("auth.invalidCredentials"),
         variant: "destructive",
+        duration: 6000, // Show error messages longer
       });
     } finally {
       setLoading(false);
