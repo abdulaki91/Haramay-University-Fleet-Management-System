@@ -23,6 +23,7 @@ import {
   X,
   ChevronRight,
   Bus,
+  Settings,
 } from "lucide-react";
 
 interface NavItemDef {
@@ -88,6 +89,25 @@ const getNavItems = (t: any, userRole: Role): NavItemDef[] => [
     path: "/reports",
     icon: <FileText size={20} />,
     roles: ["system_admin", "vehicle_manager"],
+  },
+  {
+    label: t("nav.notifications"),
+    path: "/notifications",
+    icon: <Settings size={20} />,
+    roles: [
+      "security_guard",
+      "driver",
+      "mechanic",
+      "scheduler",
+      "vehicle_manager",
+      "user",
+    ],
+  },
+  {
+    label: t("nav.adminNotifications"),
+    path: "/admin/notifications",
+    icon: <Settings size={20} />,
+    roles: ["system_admin"],
   },
 ];
 

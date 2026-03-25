@@ -25,7 +25,9 @@
     "fuel": "Madaallii Boba'aa",
     "maintenance": "Suphaa",
     "exit": "Adeemsa Bahumsaa",
-    "reports": "Gabaasota"
+    "reports": "Gabaasota",
+    "notifications": "Qindaa'ina Beeksisaa",
+    "adminNotifications": "Beeksisa Bulchaa"
   },
   "dashboard": {
     "title": "Gabatee",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   notificationService,
@@ -41,10 +41,14 @@ export default function NotificationSettings() {
   const { data, isLoading } = useQuery({
     queryKey: ["notification-preferences"],
     queryFn: notificationService.getPreferences,
-    onSuccess: (data) => {
-      setPreferences(data);
-    },
   });
+
+  // Set preferences when data is loaded
+  useEffect(() => {
+    if (data) {
+      setPreferences(data);
+    }
+  }, [data]);
 
   // Update preferences mutation
   const updateMutation = useMutation({

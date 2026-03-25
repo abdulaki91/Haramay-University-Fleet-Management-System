@@ -25,7 +25,9 @@
     "fuel": "Fuel Balance",
     "maintenance": "Maintenance",
     "exit": "Exit Workflow",
-    "reports": "Reports"
+    "reports": "Reports",
+    "notifications": "Notification Settings",
+    "adminNotifications": "Admin Notifications"
   },
   "dashboard": {
     "title": "Dashboard",

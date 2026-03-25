@@ -17,6 +17,8 @@ import MaintenancePage from "@/pages/Maintenance";
 import ExitWorkflowPage from "@/pages/ExitWorkflow";
 import ReportsPage from "@/pages/Reports";
 import ChangePasswordPage from "@/pages/ChangePassword";
+import NotificationSettings from "@/pages/NotificationSettings";
+import AdminNotifications from "@/pages/AdminNotifications";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -178,6 +180,34 @@ function AppRoutes() {
             ) : (
               <AppLayout>
                 <ReportsPage />
+              </AppLayout>
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <NotificationSettings />
+              </AppLayout>
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/notifications"
+        element={
+          <ProtectedRoute allowedRoles={["system_admin"]}>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <AdminNotifications />
               </AppLayout>
             )}
           </ProtectedRoute>

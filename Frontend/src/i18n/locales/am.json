@@ -25,7 +25,9 @@
     "fuel": "የነዳጅ ሚዛን",
     "maintenance": "ጥገና",
     "exit": "የመውጫ ፍቃድ",
-    "reports": "ሪፖርቶች"
+    "reports": "ሪፖርቶች",
+    "notifications": "የማሳወቂያ ቅንብሮች",
+    "adminNotifications": "የአስተዳዳሪ ማሳወቂያዎች"
   },
   "dashboard": {
     "title": "ዳሽቦርድ",
