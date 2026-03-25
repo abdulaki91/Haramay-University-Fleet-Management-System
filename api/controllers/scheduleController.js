@@ -140,6 +140,22 @@ exports.getScheduleById = async (req, res, next) => {
 exports.updateSchedule = async (req, res, next) => {
   try {
     const scheduleId = req.params.id;
+
+    // Accept both camelCase and snake_case
+    const updateData = req.body.vehicleId
+      ? {
+          vehicle_id: req.body.vehicleId,
+          driver_id: req.body.driverId,
+          purpose: req.body.purpose,
+          destination: req.body.destination,
+          start_date: req.body.departureTime,
+          end_date: req.body.returnTime,
+          passengers: req.body.passengers,
+          status: req.body.status,
+          notes: req.body.notes,
+        }
+      : req.body;
+
     const {
       vehicle_id,
       driver_id,
@@ -150,7 +166,7 @@ exports.updateSchedule = async (req, res, next) => {
       passengers,
       status,
       notes,
-    } = req.body;
+    } = updateData;
 
     const schedule = await Schedule.findById(scheduleId);
     if (!schedule) {

@@ -85,6 +85,12 @@ const transformSchedule = (schedule) => {
     notes: schedule.notes,
     createdAt: schedule.created_at,
     createdBy: schedule.created_by,
+    // Include joined fields from database
+    plate_number: schedule.plate_number,
+    make: schedule.make,
+    model: schedule.model,
+    driver_name: schedule.driver_name,
+    created_by_name: schedule.created_by_name,
   };
 };
 

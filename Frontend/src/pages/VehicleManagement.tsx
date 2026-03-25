@@ -24,9 +24,12 @@ import { useState } from "react";
 import { Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/store/authStore";
 
 export default function VehicleManagement() {
   const { t } = useTranslation();
+  const user = useAuthStore((s) => s.user)!;
+  const canManage = user.role === "vehicle_manager";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: vehicles = [], isLoading } = useQuery({
@@ -86,6 +89,15 @@ export default function VehicleManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManage) {
+      toast({
+        title: "Access Denied",
+        description: "Only Vehicle Managers can modify vehicles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (editing) {
       vehicleService.update(editing.id, form).then(() => {
         queryClient.invalidateQueries({ queryKey: ["vehicles"] });
@@ -137,129 +149,140 @@ export default function VehicleManagement() {
       <div className="flex items-center justify-between page-header">
         <div>
           <h1 className="page-title">{t("vehicles.title")}</h1>
-          <p className="page-subtitle">{t("vehicles.subtitle")}</p>
+          <p className="page-subtitle">
+            {canManage
+              ? t("vehicles.subtitle")
+              : "View vehicle information for scheduling"}
+          </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}>
-              <Plus size={16} className="mr-2" />{" "}
-              {t("vehicles.registerVehicle")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editing
-                  ? t("vehicles.editVehicle")
-                  : t("vehicles.registerVehicle")}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("vehicles.plateNumber")}</Label>
-                  <Input
-                    value={form.plateNumber}
-                    onChange={(e) =>
-                      setForm({ ...form, plateNumber: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.make")}</Label>
-                  <Input
-                    value={form.make}
-                    onChange={(e) => setForm({ ...form, make: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.model")}</Label>
-                  <Input
-                    value={form.model}
-                    onChange={(e) =>
-                      setForm({ ...form, model: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.year")}</Label>
-                  <Input
-                    type="number"
-                    value={form.year}
-                    onChange={(e) =>
-                      setForm({ ...form, year: Number(e.target.value) })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.type")}</Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(v) =>
-                      setForm({ ...form, type: v as Vehicle["type"] })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["bus", "van", "pickup", "sedan", "truck"].map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.fuelType")}</Label>
-                  <Select
-                    value={form.fuelType}
-                    onValueChange={(v) =>
-                      setForm({ ...form, fuelType: v as Vehicle["fuelType"] })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["diesel", "petrol", "electric", "hybrid"].map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicles.mileage")} (km)</Label>
-                  <Input
-                    type="number"
-                    value={form.mileage}
-                    onChange={(e) =>
-                      setForm({ ...form, mileage: Number(e.target.value) })
-                    }
-                  />
-                </div>
-                {editing && (
+        {canManage && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreate}>
+                <Plus size={16} className="mr-2" />{" "}
+                {t("vehicles.registerVehicle")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editing
+                    ? t("vehicles.editVehicle")
+                    : t("vehicles.registerVehicle")}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{t("vehicles.status")}</Label>
+                    <Label>{t("vehicles.plateNumber")}</Label>
+                    <Input
+                      value={form.plateNumber}
+                      onChange={(e) =>
+                        setForm({ ...form, plateNumber: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.make")}</Label>
+                    <Input
+                      value={form.make}
+                      onChange={(e) =>
+                        setForm({ ...form, make: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.model")}</Label>
+                    <Input
+                      value={form.model}
+                      onChange={(e) =>
+                        setForm({ ...form, model: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.year")}</Label>
+                    <Input
+                      type="number"
+                      value={form.year}
+                      onChange={(e) =>
+                        setForm({ ...form, year: Number(e.target.value) })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.type")}</Label>
                     <Select
-                      value={form.status}
+                      value={form.type}
                       onValueChange={(v) =>
-                        setForm({ ...form, status: v as Vehicle["status"] })
+                        setForm({ ...form, type: v as Vehicle["type"] })
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {["available", "in_use", "maintenance", "retired"].map(
-                          (s) => (
+                        {["bus", "van", "pickup", "sedan", "truck"].map((t) => (
+                          <SelectItem key={t} value={t} className="capitalize">
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.fuelType")}</Label>
+                    <Select
+                      value={form.fuelType}
+                      onValueChange={(v) =>
+                        setForm({ ...form, fuelType: v as Vehicle["fuelType"] })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["diesel", "petrol", "electric", "hybrid"].map((t) => (
+                          <SelectItem key={t} value={t} className="capitalize">
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("vehicles.mileage")} (km)</Label>
+                    <Input
+                      type="number"
+                      value={form.mileage}
+                      onChange={(e) =>
+                        setForm({ ...form, mileage: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  {editing && (
+                    <div className="space-y-2">
+                      <Label>{t("vehicles.status")}</Label>
+                      <Select
+                        value={form.status}
+                        onValueChange={(v) =>
+                          setForm({ ...form, status: v as Vehicle["status"] })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            "available",
+                            "in_use",
+                            "maintenance",
+                            "retired",
+                          ].map((s) => (
                             <SelectItem
                               key={s}
                               value={s}
@@ -267,29 +290,33 @@ export default function VehicleManagement() {
                             >
                               {s.replace("_", " ")}
                             </SelectItem>
-                          ),
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-              <Button type="submit" className="w-full">
-                {editing ? t("common.update") : t("vehicles.registerVehicle")}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <Button type="submit" className="w-full">
+                  {editing ? t("common.update") : t("vehicles.registerVehicle")}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
       <DataTable
         columns={columns}
         data={vehicles}
         searchKeys={["plateNumber", "make", "model"]}
-        actions={(v: Vehicle) => (
-          <Button variant="outline" size="sm" onClick={() => openEdit(v)}>
-            <Pencil size={14} />
-          </Button>
-        )}
+        actions={
+          canManage
+            ? (v: Vehicle) => (
+                <Button variant="outline" size="sm" onClick={() => openEdit(v)}>
+                  <Pencil size={14} />
+                </Button>
+              )
+            : undefined
+        }
       />
     </div>
   );
