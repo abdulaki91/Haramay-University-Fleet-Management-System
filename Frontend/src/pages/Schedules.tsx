@@ -179,7 +179,52 @@ export default function SchedulesPage() {
   // Filter users to show only drivers
   const drivers = users.filter((u) => u.role === "driver");
 
-  const columns = [
+  // Different column sets based on user role
+  const driverColumns = [
+    {
+      key: "vehicle",
+      label: t("schedules.vehicle"),
+      render: (s: Schedule) => (
+        <div>
+          <div className="font-medium">{s.vehiclePlateNumber}</div>
+          <div className="text-sm text-muted-foreground">
+            {s.vehicleMake} {s.vehicleModel}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "destination",
+      label: t("schedules.destination"),
+      render: (s: Schedule) => (
+        <span className="font-medium">{s.destination}</span>
+      ),
+    },
+    { key: "purpose", label: t("schedules.purpose") },
+    {
+      key: "departureTime",
+      label: t("schedules.departure"),
+      render: (s: Schedule) => new Date(s.departureTime).toLocaleString(),
+    },
+    {
+      key: "returnTime",
+      label: t("schedules.return"),
+      render: (s: Schedule) => new Date(s.returnTime).toLocaleString(),
+    },
+    { key: "passengers", label: t("schedules.passengers") },
+    {
+      key: "status",
+      label: t("schedules.status"),
+      render: (s: Schedule) => <StatusBadge status={s.status} />,
+    },
+    {
+      key: "createdBy",
+      label: t("schedules.createdBy"),
+      render: (s: Schedule) => s.createdByName || "N/A",
+    },
+  ];
+
+  const schedulerColumns = [
     {
       key: "destination",
       label: t("schedules.destination"),
@@ -261,6 +306,9 @@ export default function SchedulesPage() {
         ]
       : []),
   ];
+
+  // Choose columns based on user role
+  const columns = user.role === "driver" ? driverColumns : schedulerColumns;
 
   if (isLoading)
     return (
