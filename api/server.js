@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const { initializeDatabase } = require("./config/database");
 const { initializeSocket } = require("./services/socketService");
+const CronService = require("./services/cronService");
 const errorHandler = require("./middlewares/errorHandler");
 
 // Import routes
@@ -16,6 +17,7 @@ const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 const exitRequestRoutes = require("./routes/exitRequestRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -63,6 +65,7 @@ app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/exit-requests", exitRequestRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -82,6 +85,9 @@ const startServer = async () => {
 
     // Initialize Socket.IO
     initializeSocket(server);
+
+    // Initialize cron jobs for notifications
+    CronService.init();
 
     // Start server
     server.listen(PORT, () => {

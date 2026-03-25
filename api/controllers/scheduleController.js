@@ -1,6 +1,7 @@
 const Schedule = require("../models/Schedule");
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
+const NotificationService = require("../services/notificationService");
 const {
   successResponse,
   errorResponse,
@@ -64,6 +65,13 @@ exports.createSchedule = async (req, res, next) => {
 
     const schedule = await Schedule.findById(scheduleId);
     const transformedSchedule = transformSchedule(schedule);
+
+    // Send notification to assigned driver
+    await NotificationService.notifyScheduleAssignment(
+      scheduleId,
+      driver_id,
+      req.user.id,
+    );
 
     // Emit real-time notification to driver
     emitToUser(driver_id, "schedule:created", transformedSchedule);
@@ -187,6 +195,22 @@ exports.updateSchedule = async (req, res, next) => {
 
     const updatedSchedule = await Schedule.findById(scheduleId);
     const transformedSchedule = transformSchedule(updatedSchedule);
+
+    // Send notification if driver changed
+    if (driver_id && driver_id !== schedule.driver_id) {
+      await NotificationService.createNotification({
+        type: "schedule_updated",
+        title: "Schedule Updated",
+        message: `Your schedule has been updated: ${purpose || schedule.purpose} to ${destination || schedule.destination}.`,
+        priority: "medium",
+        targetUsers: [driver_id],
+        metadata: {
+          schedule_id: scheduleId,
+          changes: "Driver assignment updated",
+        },
+        createdBy: req.user.id,
+      });
+    }
 
     // Emit real-time notification to driver and relevant roles
     emitToUser(schedule.driver_id, "schedule:updated", transformedSchedule);

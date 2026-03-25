@@ -103,6 +103,17 @@ class User {
     ]);
   }
 
+  static async findByRole(roleName) {
+    const [rows] = await pool.query(
+      `SELECT u.*, r.name as role_name 
+       FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE r.name = ? AND u.is_active = 1`,
+      [roleName],
+    );
+    return rows;
+  }
+
   static async delete(id) {
     await pool.query("DELETE FROM users WHERE id = ?", [id]);
   }

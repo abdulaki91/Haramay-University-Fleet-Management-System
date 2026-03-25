@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { ROLE_LABELS, type Role } from "@/types";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import NotificationBell from "@/components/NotificationBell";
 import {
   LayoutDashboard,
   Users,
@@ -244,6 +245,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu size={22} />
           </button>
           <div className="flex-1" />
+          <NotificationBell />
           <LanguageSwitcher />
           <div className="badge-role bg-secondary text-secondary-foreground">
             {ROLE_LABELS[user.role]}

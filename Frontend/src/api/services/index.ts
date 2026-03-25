@@ -6,3 +6,4 @@ export { scheduleService } from "./schedule.service";
 export { fuelService } from "./fuel.service";
 export { exitService } from "./exit.service";
 export { maintenanceService } from "./maintenance.service";
+export { notificationService } from "./notification.service";
