@@ -51,10 +51,12 @@ export default function ExitWorkflowPage() {
   });
 
   // Filter schedules for the current driver and only scheduled/in_progress schedules
+  // Also filter out schedules that already have an exit request
   const driverSchedules = schedules.filter(
     (s) =>
       String(s.driverId) === String(user.id) &&
-      (s.status === "scheduled" || s.status === "in_progress"),
+      (s.status === "scheduled" || s.status === "in_progress") &&
+      !s.hasExitRequest,
   );
 
   console.log("All schedules:", schedules);

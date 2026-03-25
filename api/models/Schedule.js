@@ -37,7 +37,8 @@ class Schedule {
     const [rows] = await pool.query(
       `SELECT s.*, v.plate_number, v.make, v.model,
               CONCAT(u1.first_name, ' ', u1.last_name) as driver_name,
-              CONCAT(u2.first_name, ' ', u2.last_name) as created_by_name
+              CONCAT(u2.first_name, ' ', u2.last_name) as created_by_name,
+              (SELECT COUNT(*) FROM exit_requests er WHERE er.schedule_id = s.id AND er.status IN ('pending', 'approved')) > 0 as has_exit_request
        FROM schedules s
        JOIN vehicles v ON s.vehicle_id = v.id
        JOIN users u1 ON s.driver_id = u1.id
@@ -52,7 +53,8 @@ class Schedule {
     let query = `
       SELECT s.*, v.plate_number, v.make, v.model,
              CONCAT(u1.first_name, ' ', u1.last_name) as driver_name,
-             CONCAT(u2.first_name, ' ', u2.last_name) as created_by_name
+             CONCAT(u2.first_name, ' ', u2.last_name) as created_by_name,
+             (SELECT COUNT(*) FROM exit_requests er WHERE er.schedule_id = s.id AND er.status IN ('pending', 'approved')) > 0 as has_exit_request
       FROM schedules s
       JOIN vehicles v ON s.vehicle_id = v.id
       JOIN users u1 ON s.driver_id = u1.id

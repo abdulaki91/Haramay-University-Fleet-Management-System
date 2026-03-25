@@ -110,16 +110,26 @@ class NotificationService {
 
     // Add specific target users
     if (notification.target_users) {
-      const targetUsers = JSON.parse(notification.target_users);
-      targetUsers.forEach((id) => userIds.add(id));
+      const targetUsers = typeof notification.target_users === 'string' 
+        ? JSON.parse(notification.target_users) 
+        : notification.target_users;
+      
+      if (Array.isArray(targetUsers)) {
+        targetUsers.forEach((id) => userIds.add(id));
+      }
     }
 
     // Add users from target roles
     if (notification.target_roles) {
-      const targetRoles = JSON.parse(notification.target_roles);
-      for (const roleName of targetRoles) {
-        const users = await User.findByRole(roleName);
-        users.forEach((user) => userIds.add(user.id));
+      const targetRoles = typeof notification.target_roles === 'string'
+        ? JSON.parse(notification.target_roles)
+        : notification.target_roles;
+
+      if (Array.isArray(targetRoles)) {
+        for (const roleName of targetRoles) {
+          const users = await User.findByRole(roleName);
+          users.forEach((user) => userIds.add(user.id));
+        }
       }
     }
 

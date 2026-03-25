@@ -195,6 +195,7 @@ const createNotificationTables = async (connection) => {
         channels JSON,
         scheduled_at TIMESTAMP NULL,
         expires_at TIMESTAMP NULL,
+        processed_at TIMESTAMP NULL,
         created_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_notifications_type (type_id),

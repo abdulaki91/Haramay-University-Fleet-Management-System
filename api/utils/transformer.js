@@ -91,6 +91,7 @@ const transformSchedule = (schedule) => {
     model: schedule.model,
     driver_name: schedule.driver_name,
     created_by_name: schedule.created_by_name,
+    hasExitRequest: Boolean(schedule.has_exit_request),
   };
 };
 
