@@ -39,35 +39,35 @@ router.post(
   fuelController.addFuelRecord,
 );
 
-// Get all fuel records (Vehicle Manager only)
+// Get all fuel records (System Admin, Vehicle Manager)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   fuelController.getAllFuelRecords,
 );
 
-// Get fuel history for vehicle (Vehicle Manager)
+// Get fuel history for vehicle (System Admin, Vehicle Manager)
 router.get(
   "/vehicle/:vehicleId",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   fuelController.getFuelHistory,
 );
 
-// Calculate fuel consumption (Vehicle Manager)
+// Calculate fuel consumption (System Admin, Vehicle Manager)
 router.get(
   "/vehicle/:vehicleId/consumption",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   fuelController.calculateConsumption,
 );
 
-// Calculate fuel balance (Vehicle Manager)
+// Calculate fuel balance (System Admin, Vehicle Manager)
 router.get(
   "/vehicle/:vehicleId/balance",
   authenticate,
-  authorize("vehicle_manager"),
+  authorize("system_admin", "vehicle_manager"),
   fuelController.calculateFuelBalance,
 );
 

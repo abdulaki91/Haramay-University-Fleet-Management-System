@@ -34,11 +34,11 @@ router.post(
   exitRequestController.createExitRequest,
 );
 
-// Get all exit requests (Vehicle Manager, Driver, Security Guard)
+// Get all exit requests (System Admin, Vehicle Manager, Driver, Security Guard)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager", "driver", "security_guard"),
+  authorize("system_admin", "vehicle_manager", "driver", "security_guard"),
   exitRequestController.getAllExitRequests,
 );
 
@@ -50,11 +50,11 @@ router.get(
   exitRequestController.getApprovedExitRequests,
 );
 
-// Get exit request by ID (Vehicle Manager, Security Guard)
+// Get exit request by ID (System Admin, Vehicle Manager, Security Guard)
 router.get(
   "/:id",
   authenticate,
-  authorize("vehicle_manager", "security_guard"),
+  authorize("system_admin", "vehicle_manager", "security_guard"),
   exitRequestController.getExitRequestById,
 );
 

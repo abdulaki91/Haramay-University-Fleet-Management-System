@@ -38,11 +38,11 @@ router.post(
 // Get all vehicles (All authenticated users can view)
 router.get("/", authenticate, vehicleController.getAllVehicles);
 
-// Search by plate number (Scheduler, Vehicle Manager)
+// Search by plate number (System Admin, Scheduler, Vehicle Manager)
 router.get(
   "/search/:plateNumber",
   authenticate,
-  authorize("scheduler", "vehicle_manager"),
+  authorize("system_admin", "scheduler", "vehicle_manager"),
   vehicleController.searchByPlateNumber,
 );
 

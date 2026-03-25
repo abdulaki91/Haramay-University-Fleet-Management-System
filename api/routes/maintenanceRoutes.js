@@ -34,19 +34,19 @@ router.post(
   maintenanceController.createMaintenanceRequest,
 );
 
-// Get all maintenance requests (Vehicle Manager, Mechanic, Driver)
+// Get all maintenance requests (System Admin, Vehicle Manager, Mechanic, Driver)
 router.get(
   "/",
   authenticate,
-  authorize("vehicle_manager", "mechanic", "driver"),
+  authorize("system_admin", "vehicle_manager", "mechanic", "driver"),
   maintenanceController.getAllMaintenanceRequests,
 );
 
-// Get maintenance request by ID (Vehicle Manager, Mechanic)
+// Get maintenance request by ID (System Admin, Vehicle Manager, Mechanic)
 router.get(
   "/:id",
   authenticate,
-  authorize("vehicle_manager", "mechanic"),
+  authorize("system_admin", "vehicle_manager", "mechanic"),
   maintenanceController.getMaintenanceRequestById,
 );
 
