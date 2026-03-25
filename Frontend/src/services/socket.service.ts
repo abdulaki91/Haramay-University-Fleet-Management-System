@@ -22,6 +22,8 @@ class SocketService {
       import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
     const socketURL = baseURL.replace("/api", "");
 
+    console.log("Connecting to socket at:", socketURL);
+
     this.socket = io(socketURL, {
       auth: { token },
       transports: ["websocket", "polling"],
@@ -33,6 +35,15 @@ class SocketService {
 
     this.socket.on("disconnect", (reason) => {
       console.log("✗ Disconnected from WebSocket:", reason);
+      // Attempt to reconnect after a short delay
+      if (reason === "io server disconnect") {
+        // Server initiated disconnect, reconnect manually
+        setTimeout(() => {
+          if (this.socket && !this.socket.connected) {
+            this.socket.connect();
+          }
+        }, 1000);
+      }
     });
 
     this.socket.on("connect_error", (error) => {

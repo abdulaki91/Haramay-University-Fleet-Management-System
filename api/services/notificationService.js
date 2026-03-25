@@ -3,6 +3,7 @@ const UserNotification = require("../models/UserNotification");
 const NotificationPreference = require("../models/NotificationPreference");
 const User = require("../models/User");
 const { emitToUser, emitToRole } = require("./socketService");
+const emailService = require("./emailService");
 
 class NotificationService {
   // Get notification type ID by name
@@ -97,6 +98,9 @@ class NotificationService {
       // Send web notifications immediately via WebSocket
       await this.sendWebNotifications(notificationId);
 
+      // Send email notifications
+      await this.sendEmailNotifications(notificationId);
+
       // Mark as processed
       await Notification.markAsProcessed(notificationId);
     } catch (error) {
@@ -110,10 +114,11 @@ class NotificationService {
 
     // Add specific target users
     if (notification.target_users) {
-      const targetUsers = typeof notification.target_users === 'string' 
-        ? JSON.parse(notification.target_users) 
-        : notification.target_users;
-      
+      const targetUsers =
+        typeof notification.target_users === "string"
+          ? JSON.parse(notification.target_users)
+          : notification.target_users;
+
       if (Array.isArray(targetUsers)) {
         targetUsers.forEach((id) => userIds.add(id));
       }
@@ -121,9 +126,10 @@ class NotificationService {
 
     // Add users from target roles
     if (notification.target_roles) {
-      const targetRoles = typeof notification.target_roles === 'string'
-        ? JSON.parse(notification.target_roles)
-        : notification.target_roles;
+      const targetRoles =
+        typeof notification.target_roles === "string"
+          ? JSON.parse(notification.target_roles)
+          : notification.target_roles;
 
       if (Array.isArray(targetRoles)) {
         for (const roleName of targetRoles) {
@@ -139,8 +145,10 @@ class NotificationService {
   // Send web notifications via WebSocket
   static async sendWebNotifications(notificationId) {
     try {
-      const webNotifications =
-        await UserNotification.findPendingByChannel("web", notificationId);
+      const webNotifications = await UserNotification.findPendingByChannel(
+        "web",
+        notificationId,
+      );
 
       for (const userNotif of webNotifications) {
         // Emit to specific user
@@ -159,6 +167,72 @@ class NotificationService {
       }
     } catch (error) {
       console.error("Error sending web notifications:", error);
+    }
+  }
+
+  // Send email notifications
+  static async sendEmailNotifications(notificationId) {
+    try {
+      const emailNotifications = await UserNotification.findPendingByChannel(
+        "email",
+        notificationId,
+      );
+
+      for (const userNotif of emailNotifications) {
+        try {
+          // Get user email
+          const userEmail = userNotif.email;
+          if (!userEmail) {
+            console.warn(`No email found for user ${userNotif.user_id}`);
+            await UserNotification.updateStatus(
+              userNotif.id,
+              "failed",
+              "No email address found",
+            );
+            continue;
+          }
+
+          // Prepare notification data
+          const notificationData = {
+            id: userNotif.id,
+            title: userNotif.title,
+            message: userNotif.message,
+            priority: userNotif.priority,
+            type: userNotif.type_name,
+            metadata: JSON.parse(userNotif.metadata || "{}"),
+            createdAt: userNotif.notification_created_at,
+          };
+
+          // Send email
+          const result = await emailService.sendNotificationEmail(
+            userEmail,
+            notificationData,
+          );
+
+          if (result.success) {
+            await UserNotification.updateStatus(userNotif.id, "sent");
+            console.log(`✓ Email notification sent to ${userEmail}`);
+          } else {
+            await UserNotification.updateStatus(
+              userNotif.id,
+              "failed",
+              result.error,
+            );
+            console.error(
+              `✗ Failed to send email to ${userEmail}: ${result.error}`,
+            );
+          }
+        } catch (error) {
+          await UserNotification.updateStatus(
+            userNotif.id,
+            "failed",
+            error.message,
+          );
+          console.error(`Error sending email notification:`, error);
+        }
+      }
+    } catch (error) {
+      console.error("Error processing email notifications:", error);
     }
   }
 

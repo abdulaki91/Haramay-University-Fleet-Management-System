@@ -2,6 +2,7 @@ const Notification = require("../models/Notification");
 const UserNotification = require("../models/UserNotification");
 const NotificationPreference = require("../models/NotificationPreference");
 const NotificationService = require("../services/notificationService");
+const emailService = require("../services/emailService");
 const {
   successResponse,
   errorResponse,
@@ -232,6 +233,67 @@ exports.triggerPeriodicChecks = async (req, res, next) => {
   try {
     await NotificationService.runPeriodicChecks();
     successResponse(res, null, "Periodic checks triggered successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Test email configuration (Admin only)
+exports.testEmailConfig = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const testEmail = email || req.user.email;
+
+    if (!testEmail) {
+      return errorResponse(res, "Email address is required", 400);
+    }
+
+    // Verify email service connection
+    const isConnected = await emailService.verifyConnection();
+    if (!isConnected) {
+      return errorResponse(
+        res,
+        "Email service is not properly configured",
+        500,
+      );
+    }
+
+    // Send test email
+    const result = await emailService.sendTestEmail(testEmail);
+
+    if (result.success) {
+      successResponse(
+        res,
+        { messageId: result.messageId },
+        "Test email sent successfully",
+      );
+    } else {
+      errorResponse(res, `Failed to send test email: ${result.error}`, 500);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get email service status (Admin only)
+exports.getEmailStatus = async (req, res, next) => {
+  try {
+    const isConfigured = emailService.isConfigured;
+    const isConnected = isConfigured
+      ? await emailService.verifyConnection()
+      : false;
+
+    successResponse(
+      res,
+      {
+        configured: isConfigured,
+        connected: isConnected,
+        host: process.env.EMAIL_HOST || "Not configured",
+        port: process.env.EMAIL_PORT || "Not configured",
+        user: process.env.EMAIL_USER || "Not configured",
+      },
+      "Email service status retrieved",
+    );
   } catch (error) {
     next(error);
   }

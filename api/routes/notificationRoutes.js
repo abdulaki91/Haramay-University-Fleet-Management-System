@@ -92,4 +92,22 @@ router.post(
   notificationController.triggerPeriodicChecks,
 );
 
+// Email testing routes
+router.post(
+  "/admin/test-email",
+  [
+    authenticate,
+    authorize("system_admin"),
+    body("email").optional().isEmail().withMessage("Invalid email format"),
+    validate,
+  ],
+  notificationController.testEmailConfig,
+);
+
+router.get(
+  "/admin/email-status",
+  [authenticate, authorize("system_admin")],
+  notificationController.getEmailStatus,
+);
+
 module.exports = router;

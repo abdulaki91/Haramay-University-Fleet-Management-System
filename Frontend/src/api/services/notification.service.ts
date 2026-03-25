@@ -119,4 +119,21 @@ export const notificationService = {
   triggerPeriodicChecks: async (): Promise<void> => {
     await api.post("/notifications/admin/trigger-checks");
   },
+
+  // Admin: Test email configuration
+  testEmailConfig: async (email?: string): Promise<void> => {
+    await api.post("/notifications/admin/test-email", { email });
+  },
+
+  // Admin: Get email service status
+  getEmailStatus: async (): Promise<{
+    configured: boolean;
+    connected: boolean;
+    host: string;
+    port: string;
+    user: string;
+  }> => {
+    const response = await api.get("/notifications/admin/email-status");
+    return response.data.data;
+  },
 };
