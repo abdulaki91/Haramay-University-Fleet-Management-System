@@ -20,6 +20,7 @@
     "dashboard": "Dashboard",
     "users": "User Management",
     "vehicles": "Vehicle Management",
+    "viewVehicles": "View Vehicles",
     "schedules": "Schedules",
     "fuel": "Fuel Balance",
     "maintenance": "Maintenance",

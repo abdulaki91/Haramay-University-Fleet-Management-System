@@ -31,7 +31,7 @@ interface NavItemDef {
   roles: Role[];
 }
 
-const getNavItems = (t: any): NavItemDef[] => [
+const getNavItems = (t: any, userRole: Role): NavItemDef[] => [
   {
     label: t("nav.dashboard"),
     path: "/dashboard",
@@ -53,7 +53,7 @@ const getNavItems = (t: any): NavItemDef[] => [
     roles: ["system_admin"],
   },
   {
-    label: t("nav.vehicles"),
+    label: userRole === "scheduler" ? t("nav.viewVehicles") : t("nav.vehicles"),
     path: "/vehicles",
     icon: <Car size={20} />,
     roles: ["vehicle_manager", "scheduler"],
@@ -99,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  const NAV_ITEMS = getNavItems(t);
+  const NAV_ITEMS = getNavItems(t, user.role);
   const filteredNav = NAV_ITEMS.filter((item) =>
     item.roles.includes(user.role),
   );
