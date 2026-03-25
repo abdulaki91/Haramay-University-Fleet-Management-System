@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 );
 
 -- Insert default notification types
-INSERT INTO notification_types (name, description, default_channels) VALUES
+INSERT IGNORE INTO notification_types (name, description, default_channels) VALUES
 ('maintenance_due', 'Vehicle maintenance is due or overdue', '["web", "email"]'),
 ('fuel_low', 'Vehicle fuel level is low and needs refill', '["web", "email"]'),
 ('schedule_assigned', 'New schedule has been assigned to driver', '["web", "email"]'),

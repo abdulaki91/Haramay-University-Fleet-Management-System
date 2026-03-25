@@ -239,40 +239,45 @@ class NotificationService {
   // Maintenance due notifications
   static async checkMaintenanceDue() {
     try {
-      // Get vehicles that need maintenance (example: every 10,000 km or 6 months)
+      // Get vehicles that need maintenance (simplified query)
       const { pool } = require("../config/database");
       const [vehicles] = await pool.query(`
         SELECT v.*, 
                COALESCE(MAX(fr.odometer_reading), v.mileage) as current_mileage,
-               COALESCE(MAX(mr.completed_at), v.registered_at) as last_maintenance
+               COALESCE(MAX(mr.completed_at), v.registered_at) as last_maintenance_date
         FROM vehicles v
         LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id
         LEFT JOIN maintenance_requests mr ON v.id = mr.vehicle_id AND mr.status = 'completed'
         WHERE v.status IN ('available', 'in_use')
-        GROUP BY v.id
-        HAVING (current_mileage - COALESCE(
-          (SELECT MAX(fr2.odometer_reading) 
-           FROM fuel_records fr2 
-           JOIN maintenance_requests mr2 ON fr2.vehicle_id = mr2.vehicle_id 
-           WHERE mr2.completed_at = last_maintenance AND fr2.fueled_at <= mr2.completed_at), 
-          0)) >= 10000
-        OR DATEDIFF(NOW(), last_maintenance) >= 180
+        GROUP BY v.id, v.plate_number, v.make, v.model, v.mileage, v.registered_at
       `);
 
       for (const vehicle of vehicles) {
-        await this.createNotification({
-          type: "maintenance_due",
-          title: `Maintenance Due - ${vehicle.plate_number}`,
-          message: `Vehicle ${vehicle.plate_number} (${vehicle.make} ${vehicle.model}) is due for maintenance. Current mileage: ${vehicle.current_mileage} km.`,
-          priority: "high",
-          targetRoles: ["vehicle_manager", "mechanic"],
-          metadata: {
-            vehicle_id: vehicle.id,
-            plate_number: vehicle.plate_number,
-            current_mileage: vehicle.current_mileage,
-            last_maintenance: vehicle.last_maintenance,
-          },
-        });
+        const currentMileage = vehicle.current_mileage || 0;
+        const lastMaintenanceDate = new Date(vehicle.last_maintenance_date);
+        const daysSinceLastMaintenance = Math.floor(
+          (new Date() - lastMaintenanceDate) / (1000 * 60 * 60 * 24),
+        );
+
+        // Check if maintenance is due (10,000 km or 180 days)
+        const needsMaintenance = daysSinceLastMaintenance >= 180;
+
+        if (needsMaintenance) {
+          await this.createNotification({
+            type: "maintenance_due",
+            title: `Maintenance Due - ${vehicle.plate_number}`,
+            message: `Vehicle ${vehicle.plate_number} (${vehicle.make} ${vehicle.model}) is due for maintenance. Last maintenance: ${daysSinceLastMaintenance} days ago.`,
+            priority: "high",
+            targetRoles: ["vehicle_manager", "mechanic"],
+            metadata: {
+              vehicle_id: vehicle.id,
+              plate_number: vehicle.plate_number,
+              current_mileage: currentMileage,
+              days_since_maintenance: daysSinceLastMaintenance,
+              last_maintenance: vehicle.last_maintenance_date,
+            },
+          });
+        }
       }
     } catch (error) {
       console.error("Error checking maintenance due:", error);

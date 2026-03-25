@@ -178,10 +178,10 @@ const createNotificationTables = async (connection) => {
         description VARCHAR(255),
         default_channels JSON,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Notifications Table (without foreign keys first)
+    // Notifications Table (using MyISAM to avoid tablespace issues)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -201,10 +201,10 @@ const createNotificationTables = async (connection) => {
         INDEX idx_notifications_type (type_id),
         INDEX idx_notifications_scheduled (scheduled_at),
         INDEX idx_notifications_priority (priority)
-      )
+      ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // User Notifications Table (without foreign keys first)
+    // User Notifications Table (using MyISAM)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS user_notifications (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -219,10 +219,10 @@ const createNotificationTables = async (connection) => {
         INDEX idx_user_notifications_user (user_id),
         INDEX idx_user_notifications_status (status),
         INDEX idx_user_notifications_notification (notification_id)
-      )
+      ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Notification Preferences Table (without foreign keys first)
+    // Notification Preferences Table (using MyISAM)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS notification_preferences (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -235,7 +235,7 @@ const createNotificationTables = async (connection) => {
         INDEX idx_notification_preferences_user (user_id),
         INDEX idx_notification_preferences_type (notification_type_id),
         UNIQUE KEY unique_user_type_preference (user_id, notification_type_id)
-      )
+      ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
     // Insert default notification types
@@ -254,7 +254,7 @@ const createNotificationTables = async (connection) => {
     `);
 
     console.log("✓ Notification tables created successfully");
-    console.log("ℹ Note: Foreign key constraints omitted for compatibility");
+    console.log("ℹ Note: Using MyISAM engine to avoid tablespace issues");
   } catch (error) {
     console.error("✗ Error creating notification tables:", error.message);
     throw error;
