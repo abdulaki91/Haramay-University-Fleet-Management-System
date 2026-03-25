@@ -19,6 +19,7 @@ import ReportsPage from "@/pages/Reports";
 import ChangePasswordPage from "@/pages/ChangePassword";
 import NotificationSettings from "@/pages/NotificationSettings";
 import AdminNotifications from "@/pages/AdminNotifications";
+import AdminNotificationTest from "@/pages/AdminNotificationTest";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -208,6 +209,20 @@ function AppRoutes() {
             ) : (
               <AppLayout>
                 <AdminNotifications />
+              </AppLayout>
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/notification-test"
+        element={
+          <ProtectedRoute allowedRoles={["system_admin"]}>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <AdminNotificationTest />
               </AppLayout>
             )}
           </ProtectedRoute>

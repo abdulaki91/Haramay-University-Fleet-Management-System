@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Bus,
   Settings,
+  TestTube,
 } from "lucide-react";
 
 interface NavItemDef {
@@ -107,6 +108,12 @@ const getNavItems = (t: any, userRole: Role): NavItemDef[] => [
     label: t("nav.adminNotifications"),
     path: "/admin/notifications",
     icon: <Settings size={20} />,
+    roles: ["system_admin"],
+  },
+  {
+    label: "Notification Testing",
+    path: "/admin/notification-test",
+    icon: <TestTube size={20} />,
     roles: ["system_admin"],
   },
 ];

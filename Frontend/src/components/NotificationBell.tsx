@@ -43,28 +43,11 @@ export default function NotificationBell() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
   const user = useAuthStore((s) => s.user);
-
-  // Monitor socket connection status
-  useEffect(() => {
-    const checkConnection = () => {
-      setSocketConnected(socketService.isConnected());
-    };
-
-    // Check initial connection
-    checkConnection();
-
-    // Check connection status periodically
-    const interval = setInterval(checkConnection, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Listen for socket events to refresh notification data
   useEffect(() => {
     const handleNewNotification = (notification: any) => {
-      console.log("NotificationBell: Received new notification:", notification);
       // Immediately invalidate queries when a new notification arrives
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({
@@ -82,11 +65,7 @@ export default function NotificationBell() {
   }, [queryClient]);
 
   // Get unread count
-  const {
-    data: unreadCount = 0,
-    error: unreadError,
-    isLoading: unreadLoading,
-  } = useQuery({
+  const { data: unreadCount = 0 } = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: notificationService.getUnreadCount,
     refetchInterval: 5000, // Refetch every 5 seconds for more responsive updates
@@ -95,38 +74,13 @@ export default function NotificationBell() {
   });
 
   // Get notifications
-  const {
-    data: notifications = [],
-    error: notificationsError,
-    isLoading: notificationsLoading,
-  } = useQuery({
+  const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationService.getAll(false),
     enabled: open, // Only fetch when popover is open
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
-
-  // Debug logging
-  useEffect(() => {
-    console.log("NotificationBell Debug:", {
-      unreadCount,
-      unreadError,
-      unreadLoading,
-      notifications,
-      notificationsError,
-      notificationsLoading,
-      socketConnected,
-    });
-  }, [
-    unreadCount,
-    unreadError,
-    unreadLoading,
-    notifications,
-    notificationsError,
-    notificationsLoading,
-    socketConnected,
-  ]);
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -240,196 +194,12 @@ export default function NotificationBell() {
               {unreadCount > 99 ? "99+" : String(unreadCount)}
             </Badge>
           )}
-          {/* Socket connection indicator */}
-          <div
-            className={cn(
-              "absolute -bottom-1 -right-1 w-2 h-2 rounded-full",
-              socketConnected ? "bg-green-500" : "bg-red-500",
-            )}
-            title={socketConnected ? "Connected" : "Disconnected"}
-          />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-semibold">Notifications</h3>
           <div className="flex items-center gap-2">
-            {import.meta.env.DEV && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      console.log("Testing API calls...");
-
-                      // Test unread count
-                      const count = await notificationService.getUnreadCount();
-                      console.log("Unread count response:", count);
-
-                      // Test notifications list
-                      const notifs = await notificationService.getAll(false);
-                      console.log("Notifications response:", notifs);
-
-                      toast({
-                        title: "API Test Success",
-                        description: `Count: ${count}, Notifications: ${notifs.length}`,
-                      });
-                    } catch (error) {
-                      console.error("API test failed:", error);
-                      toast({
-                        title: "API Test Failed",
-                        description: `Error: ${error.message}`,
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="text-xs"
-                >
-                  Test API
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    console.log("Reconnecting socket...");
-                    socketService.disconnect();
-                    setTimeout(() => socketService.connect(), 1000);
-                  }}
-                  className="text-xs"
-                >
-                  Reconnect
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      console.log("Triggering periodic checks...");
-                      await notificationService.triggerPeriodicChecks();
-                      toast({
-                        title: "Periodic Checks Triggered",
-                        description: "Check for new notifications",
-                      });
-                    } catch (error) {
-                      console.error("Failed to trigger checks:", error);
-                      toast({
-                        title: "Failed to Trigger Checks",
-                        description: error.message,
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="text-xs"
-                >
-                  Trigger Checks
-                </Button>
-                {user?.role === "system_admin" && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          console.log("Creating test notification...");
-                          await notificationService.createNotification({
-                            type: "system_alert",
-                            title: "Test Notification",
-                            message:
-                              "This is a test notification to verify the system is working.",
-                            priority: "medium",
-                            targetUsers: [Number(user.id)],
-                          });
-                          toast({
-                            title: "Test Notification Created",
-                            description: "Check if it appears in the bell",
-                          });
-                        } catch (error) {
-                          console.error(
-                            "Failed to create test notification:",
-                            error,
-                          );
-                          toast({
-                            title: "Failed to Create Test",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      className="text-xs"
-                    >
-                      Test Notif
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          console.log("Testing email configuration...");
-                          await notificationService.testEmailConfig();
-                          toast({
-                            title: "Test Email Sent",
-                            description: "Check your email inbox",
-                          });
-                        } catch (error) {
-                          console.error("Failed to send test email:", error);
-                          toast({
-                            title: "Email Test Failed",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      className="text-xs"
-                    >
-                      Test Email
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          const status =
-                            await notificationService.getEmailStatus();
-                          console.log("Email status:", status);
-                          toast({
-                            title: "Email Status",
-                            description: `Configured: ${status.configured}, Connected: ${status.connected}`,
-                          });
-                        } catch (error) {
-                          console.error("Failed to get email status:", error);
-                          toast({
-                            title: "Status Check Failed",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      className="text-xs"
-                    >
-                      Email Status
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-            {!socketConnected && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["notifications"],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["notifications", "unread-count"],
-                  });
-                }}
-                className="text-xs"
-              >
-                Refresh
-              </Button>
-            )}
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
