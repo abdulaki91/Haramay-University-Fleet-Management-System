@@ -13,56 +13,38 @@ const { transformExitRequest } = require("../utils/transformer");
 // Create exit request (Driver only)
 exports.createExitRequest = async (req, res, next) => {
   try {
-    console.log("Exit request body:", req.body);
-
-    // Accept both camelCase and snake_case
-    const exitData = req.body.vehicleId
-      ? {
-          vehicle_id: req.body.vehicleId,
-          driver_id: req.body.driverId || req.user.id,
-          schedule_id: req.body.scheduleId,
-          destination: req.body.destination,
-          purpose: req.body.purpose,
-          expected_return: req.body.expectedReturn,
-          notes: req.body.notes,
-        }
-      : req.body;
-
     const {
+      vehicleId,
       vehicle_id,
+      driverId,
       driver_id,
+      scheduleId,
       schedule_id,
       destination,
       purpose,
+      reason,
+      expectedReturn,
       expected_return,
       notes,
-    } = exitData;
+    } = req.body;
 
-    console.log("Processed exit data:", {
-      vehicle_id,
-      driver_id,
-      schedule_id,
+    const finalData = {
+      vehicle_id: vehicleId || vehicle_id,
+      driver_id: driverId || driver_id || req.user.id,
+      schedule_id: scheduleId || schedule_id,
       destination,
-      purpose,
-      expected_return,
+      purpose: purpose || reason,
+      expected_return: expectedReturn || expected_return,
       notes,
-    });
+    };
 
     // Verify vehicle exists
-    const vehicle = await Vehicle.findById(vehicle_id);
+    const vehicle = await Vehicle.findById(finalData.vehicle_id);
     if (!vehicle) {
       return errorResponse(res, "Vehicle not found", 404);
     }
 
-    const requestId = await ExitRequest.create({
-      vehicle_id,
-      driver_id: driver_id || req.user.id,
-      schedule_id,
-      destination,
-      purpose,
-      expected_return,
-      notes,
-    });
+    const requestId = await ExitRequest.create(finalData);
 
     const exitRequest = await ExitRequest.findById(requestId);
     const transformedRequest = transformExitRequest(exitRequest);
@@ -178,7 +160,7 @@ exports.approveExitRequest = async (req, res, next) => {
     emitToUser(request.driver_id, "exit_request:approved", transformedRequest);
     emitToRole("security_guard", "exit_request:approved", transformedRequest);
 
-    successResponse(res, updatedRequest, "Exit request approved successfully");
+    successResponse(res, transformedRequest, "Exit request approved successfully");
   } catch (error) {
     next(error);
   }
@@ -217,7 +199,7 @@ exports.rejectExitRequest = async (req, res, next) => {
     // Emit real-time notification to driver
     emitToUser(request.driver_id, "exit_request:rejected", transformedRequest);
 
-    successResponse(res, updatedRequest, "Exit request rejected");
+    successResponse(res, transformedRequest, "Exit request rejected");
   } catch (error) {
     next(error);
   }

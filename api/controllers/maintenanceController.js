@@ -129,7 +129,7 @@ exports.getMaintenanceRequestById = async (req, res, next) => {
 // Update maintenance status (Mechanic, Vehicle Manager)
 exports.updateMaintenanceStatus = async (req, res, next) => {
   try {
-    const { status, assigned_to, notes, estimated_cost, actual_cost } =
+    const { status, assigned_to, assignedTo, notes, estimated_cost, estimatedCost, actual_cost, actualCost } =
       req.body;
     const requestId = req.params.id;
 
@@ -138,20 +138,25 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
       return errorResponse(res, "Maintenance request not found", 404);
     }
 
+    // Map fields
+    const finalAssignedTo = assignedTo ?? assigned_to;
+    const finalEstimatedCost = estimatedCost ?? estimated_cost;
+    const finalActualCost = actualCost ?? actual_cost;
+
     // Update status
     await MaintenanceRequest.updateStatus(
       requestId,
       status,
-      assigned_to,
+      finalAssignedTo,
       notes,
     );
 
     // Update costs if provided
-    if (estimated_cost || actual_cost) {
-      await MaintenanceRequest.update(requestId, {
-        estimated_cost,
-        actual_cost,
-      });
+    if (finalEstimatedCost !== undefined || finalActualCost !== undefined) {
+      const costs = {};
+      if (finalEstimatedCost !== undefined) costs.estimated_cost = finalEstimatedCost;
+      if (finalActualCost !== undefined) costs.actual_cost = finalActualCost;
+      await MaintenanceRequest.update(requestId, costs);
     }
 
     const updatedRequest = await MaintenanceRequest.findById(requestId);
@@ -160,13 +165,13 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
     // Emit real-time notification to requester and relevant roles
     emitToUser(request.requested_by, "maintenance:updated", transformedRequest);
     emitToRole("vehicle_manager", "maintenance:updated", transformedRequest);
-    if (assigned_to) {
-      emitToUser(assigned_to, "maintenance:assigned", transformedRequest);
+    if (finalAssignedTo) {
+      emitToUser(finalAssignedTo, "maintenance:assigned", transformedRequest);
     }
 
     successResponse(
       res,
-      updatedRequest,
+      transformedRequest,
       "Maintenance request updated successfully",
     );
   } catch (error) {

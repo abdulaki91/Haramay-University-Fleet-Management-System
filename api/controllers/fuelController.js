@@ -11,60 +11,43 @@ const { transformFuelRecord } = require("../utils/transformer");
 // Add fuel record
 exports.addFuelRecord = async (req, res, next) => {
   try {
-    console.log("Fuel record body:", req.body);
-
-    // Accept both camelCase and snake_case
-    const fuelData = req.body.vehicleId
-      ? {
-          vehicle_id: req.body.vehicleId,
-          driver_id: req.body.driverId || req.user.id,
-          fuel_amount: req.body.liters,
-          cost: req.body.totalCost || req.body.liters * req.body.costPerLiter,
-          odometer_reading: req.body.odometerReading,
-          fuel_station: req.body.station,
-          receipt_number: req.body.receiptNumber,
-          notes: req.body.notes,
-        }
-      : req.body;
-
     const {
+      vehicleId,
       vehicle_id,
+      driverId,
       driver_id,
+      liters,
       fuel_amount,
       cost,
+      totalCost,
+      costPerLiter,
+      odometerReading,
       odometer_reading,
+      station,
       fuel_station,
+      receiptNumber,
       receipt_number,
       notes,
-    } = fuelData;
+    } = req.body;
 
-    console.log("Processed fuel data:", {
-      vehicle_id,
-      driver_id,
-      fuel_amount,
-      cost,
-      odometer_reading,
-      fuel_station,
-      receipt_number,
-      notes,
-    });
+    const finalData = {
+      vehicle_id: vehicleId || vehicle_id,
+      driver_id: driverId || driver_id || req.user.id,
+      fuel_amount: liters || fuel_amount,
+      cost: totalCost || cost || (liters * costPerLiter),
+      odometer_reading: odometerReading || odometer_reading,
+      fuel_station: station || fuel_station,
+      receipt_number: receiptNumber || receipt_number,
+      notes: notes,
+    };
 
     // Verify vehicle exists
-    const vehicle = await Vehicle.findById(vehicle_id);
+    const vehicle = await Vehicle.findById(finalData.vehicle_id);
     if (!vehicle) {
       return errorResponse(res, "Vehicle not found", 404);
     }
 
-    const fuelId = await FuelRecord.create({
-      vehicle_id,
-      driver_id: driver_id || req.user.id,
-      fuel_amount,
-      cost,
-      odometer_reading,
-      fuel_station,
-      receipt_number,
-      notes,
-    });
+    const fuelId = await FuelRecord.create(finalData);
 
     const fuelRecord = await FuelRecord.findById(fuelId);
     const transformedRecord = transformFuelRecord(fuelRecord);
