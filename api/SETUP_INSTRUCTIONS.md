@@ -1,211 +1,97 @@
-# Setup Instructions - Haramaya University Fleet Management System
+# Notification System Setup Instructions
 
-## Quick Start Guide
+## Prerequisites
 
-### Step 1: Install Dependencies
+1. **MySQL/MariaDB Server Running**
+   - Make sure your MySQL server is running
+   - Update the `.env` file with correct database credentials
 
-```bash
-npm install
-```
+2. **Database Connection**
+   - Verify connection by starting the main server: `npm start`
+   - If connection fails, check your MySQL service
 
-### Step 2: Configure Environment
+## Setup Steps
 
-Create a `.env` file in the root directory:
+### Option 1: Automatic Setup (Recommended)
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your MySQL credentials:
-
-```env
-PORT=3000
-NODE_ENV=development
-
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=haramaya_fleet
-DB_PORT=3306
-
-JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-JWT_EXPIRE=7d
-
-DEFAULT_PAGE_SIZE=10
-MAX_PAGE_SIZE=100
-```
-
-### Step 3: Create Database
-
-Open MySQL and run:
-
-```sql
-CREATE DATABASE haramaya_fleet;
-```
-
-Or let the migration script create it automatically (recommended).
-
-### Step 4: Run Migrations
-
-This will create all database tables:
+The notification tables are now integrated into the main database initialization.
 
 ```bash
-npm run migrate
-```
-
-### Step 5: Seed Default Data
-
-This will create roles and default admin user:
-
-```bash
-npm run seed
-```
-
-### Step 6: Start the Server
-
-**Development mode** (with auto-reload):
-
-```bash
-npm run dev
-```
-
-**Production mode**:
-
-```bash
+# Start the server (this will create all tables including notifications)
 npm start
 ```
 
-The server will start on `http://localhost:3000`
+### Option 2: Manual Setup
 
-## Default Login Credentials
-
-After seeding, use these credentials:
-
-- **Email**: `admin@haramaya.edu.et`
-- **Password**: `Admin@123`
-
-**⚠️ SECURITY**: Change this password immediately after first login!
-
-## Testing the API
-
-### 1. Login
+If you need to set up notifications separately:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@haramaya.edu.et","password":"Admin@123"}'
+# Run the notification setup script
+npm run setup-notifications
 ```
 
-Save the returned token for subsequent requests.
+### Option 3: SQL Manual Setup
 
-### 2. Get Your Profile
+If scripts fail, you can run the SQL manually:
 
-```bash
-curl -X GET http://localhost:3000/api/auth/profile \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```sql
+-- Copy and paste the contents of api/migrations/create_notifications_tables.sql
+-- into your MySQL client
 ```
 
-### 3. Create a New User
+## Verification
 
-```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -d '{
-    "first_name":"John",
-    "last_name":"Doe",
-    "email":"john@haramaya.edu.et",
-    "password":"password123",
-    "phone":"+251911111111",
-    "role_id":4
-  }'
-```
+Once setup is complete, you should see these new tables in your database:
 
-## Role IDs Reference
-
-After seeding, roles will have these IDs:
-
-1. admin
-2. vehicle_manager
-3. scheduler
-4. driver
-5. mechanic
-6. user
-7. security_guard
+- `notification_types`
+- `notifications`
+- `user_notifications`
+- `notification_preferences`
 
 ## Troubleshooting
 
-### Database Connection Error
+### Database Connection Issues
 
-- Verify MySQL is running
-- Check credentials in `.env`
-- Ensure database exists
+1. Check if MySQL is running: `mysql -u root -p`
+2. Verify credentials in `.env` file
+3. Make sure database `haramaya_fleet` exists
 
-### Port Already in Use
+### Permission Issues
 
-Change the PORT in `.env` file:
+1. Make sure MySQL user has CREATE privileges
+2. Check if user can create databases and tables
 
-```env
-PORT=3001
-```
+### Table Already Exists
 
-### Migration Fails
+- The setup scripts use `CREATE TABLE IF NOT EXISTS` so they're safe to run multiple times
+- `INSERT IGNORE` is used for default data to prevent duplicates
 
-- Ensure MySQL user has CREATE privileges
-- Check database connection settings
-- Verify MySQL version (5.7+)
+## Testing the Notification System
 
-### Seed Fails
+Once setup is complete:
 
-- Run migrations first: `npm run migrate`
-- Check if tables exist in database
-- Verify database connection
+1. **Start the server**: `npm start`
+2. **Check the logs**: You should see "✓ Notification cron jobs initialized"
+3. **Test the API**: Try accessing `/api/notifications/unread-count` with a valid token
+4. **Frontend**: The notification bell should appear in the header
+
+## Features Available After Setup
+
+- ✅ Real-time web notifications
+- ✅ Automatic maintenance due alerts
+- ✅ Low fuel notifications
+- ✅ Schedule assignment notifications
+- ✅ Exit request status updates
+- ✅ User notification preferences
+- ✅ Periodic automated checks
+- ✅ Role-based notification filtering
 
 ## Next Steps
 
-1. Change default admin password
-2. Create users for each role
-3. Register vehicles
-4. Test the complete workflow
-5. Configure production environment
+After successful setup:
 
-## Production Deployment
-
-### Environment Variables
-
-Update `.env` for production:
-
-```env
-NODE_ENV=production
-JWT_SECRET=use_a_very_strong_random_secret_here
-DB_HOST=your_production_db_host
-```
-
-### Security Checklist
-
-- [ ] Change default admin password
-- [ ] Use strong JWT_SECRET
-- [ ] Enable HTTPS
-- [ ] Configure CORS properly
-- [ ] Set up database backups
-- [ ] Enable logging
-- [ ] Use environment-specific configs
-
-### Running in Production
-
-```bash
-npm start
-```
-
-Or use a process manager like PM2:
-
-```bash
-npm install -g pm2
-pm2 start src/server.js --name haramaya-fleet
-pm2 save
-pm2 startup
-```
-
-## Support
-
-For issues or questions, contact the Haramaya University IT Department.
+1. Login to the frontend
+2. Look for the notification bell icon in the header
+3. Check notification preferences in user settings
+4. Test by creating a schedule or exit request
+5. Verify notifications appear in real-time

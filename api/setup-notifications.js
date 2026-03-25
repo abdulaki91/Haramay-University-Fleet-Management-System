@@ -1,10 +1,15 @@
 const fs = require("fs");
 const path = require("path");
-const { pool } = require("./config/database");
+const { initializeDatabase } = require("./config/database");
 
 async function setupNotifications() {
   try {
     console.log("Setting up notification system...");
+
+    // Initialize database connection first
+    await initializeDatabase();
+
+    const { pool } = require("./config/database");
 
     // Read and execute the notification tables SQL
     const sqlPath = path.join(
@@ -19,7 +24,14 @@ async function setupNotifications() {
 
     for (const statement of statements) {
       if (statement.trim()) {
-        await pool.query(statement);
+        try {
+          await pool.query(statement);
+        } catch (error) {
+          // Ignore "table already exists" errors
+          if (!error.message.includes("already exists")) {
+            throw error;
+          }
+        }
       }
     }
 
