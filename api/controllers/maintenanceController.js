@@ -1,5 +1,6 @@
 const MaintenanceRequest = require("../models/MaintenanceRequest");
 const Vehicle = require("../models/Vehicle");
+const NotificationService = require("../services/notificationService");
 const {
   successResponse,
   errorResponse,
@@ -58,6 +59,9 @@ exports.createMaintenanceRequest = async (req, res, next) => {
 
     const maintenanceRequest = await MaintenanceRequest.findById(requestId);
     const transformedRequest = transformMaintenanceRequest(maintenanceRequest);
+
+    // Create notification for vehicle managers and mechanics
+    await NotificationService.notifyMaintenanceRequest(requestId, req.user.id);
 
     // Emit real-time notification to vehicle managers and mechanics
     emitToRole("vehicle_manager", "maintenance:created", transformedRequest);
@@ -129,8 +133,16 @@ exports.getMaintenanceRequestById = async (req, res, next) => {
 // Update maintenance status (Mechanic, Vehicle Manager)
 exports.updateMaintenanceStatus = async (req, res, next) => {
   try {
-    const { status, assigned_to, assignedTo, notes, estimated_cost, estimatedCost, actual_cost, actualCost } =
-      req.body;
+    const {
+      status,
+      assigned_to,
+      assignedTo,
+      notes,
+      estimated_cost,
+      estimatedCost,
+      actual_cost,
+      actualCost,
+    } = req.body;
     const requestId = req.params.id;
 
     const request = await MaintenanceRequest.findById(requestId);
@@ -143,6 +155,9 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
     const finalEstimatedCost = estimatedCost ?? estimated_cost;
     const finalActualCost = actualCost ?? actual_cost;
 
+    // Get the old status before updating
+    const oldStatus = request.status;
+
     // Update status
     await MaintenanceRequest.updateStatus(
       requestId,
@@ -154,13 +169,33 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
     // Update costs if provided
     if (finalEstimatedCost !== undefined || finalActualCost !== undefined) {
       const costs = {};
-      if (finalEstimatedCost !== undefined) costs.estimated_cost = finalEstimatedCost;
+      if (finalEstimatedCost !== undefined)
+        costs.estimated_cost = finalEstimatedCost;
       if (finalActualCost !== undefined) costs.actual_cost = finalActualCost;
       await MaintenanceRequest.update(requestId, costs);
     }
 
     const updatedRequest = await MaintenanceRequest.findById(requestId);
     const transformedRequest = transformMaintenanceRequest(updatedRequest);
+
+    // Send notifications for status changes
+    if (oldStatus !== status) {
+      await NotificationService.notifyMaintenanceStatusUpdate(
+        requestId,
+        oldStatus,
+        status,
+        req.user.id,
+      );
+    }
+
+    // Send assignment notification if someone was assigned
+    if (finalAssignedTo && finalAssignedTo !== request.assigned_to) {
+      await NotificationService.notifyMaintenanceAssignment(
+        requestId,
+        finalAssignedTo,
+        req.user.id,
+      );
+    }
 
     // Emit real-time notification to requester and relevant roles
     emitToUser(request.requested_by, "maintenance:updated", transformedRequest);

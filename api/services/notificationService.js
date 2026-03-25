@@ -530,6 +530,162 @@ class NotificationService {
     }
   }
 
+  // Maintenance request notifications
+  static async notifyMaintenanceRequest(maintenanceRequestId, createdBy) {
+    try {
+      const MaintenanceRequest = require("../models/MaintenanceRequest");
+      const maintenanceRequest =
+        await MaintenanceRequest.findById(maintenanceRequestId);
+
+      if (maintenanceRequest) {
+        await this.createNotification({
+          type: "maintenance_requested",
+          title: "New Maintenance Request Submitted",
+          message: `${maintenanceRequest.requested_by_name} has submitted a maintenance request for ${maintenanceRequest.plate_number}. Priority: ${maintenanceRequest.priority}. Issue: ${maintenanceRequest.description}`,
+          priority:
+            maintenanceRequest.priority === "critical" ? "high" : "medium",
+          targetRoles: ["vehicle_manager", "mechanic", "system_admin"],
+          metadata: {
+            maintenance_request_id: maintenanceRequestId,
+            vehicle_id: maintenanceRequest.vehicle_id,
+            plate_number: maintenanceRequest.plate_number,
+            requested_by_name: maintenanceRequest.requested_by_name,
+            priority: maintenanceRequest.priority,
+            description: maintenanceRequest.description,
+          },
+          createdBy,
+        });
+      }
+    } catch (error) {
+      console.error("Error notifying maintenance request:", error);
+    }
+  }
+
+  // Maintenance assignment notification
+  static async notifyMaintenanceAssignment(
+    maintenanceRequestId,
+    assignedToId,
+    assignedBy,
+  ) {
+    try {
+      const MaintenanceRequest = require("../models/MaintenanceRequest");
+      const maintenanceRequest =
+        await MaintenanceRequest.findById(maintenanceRequestId);
+
+      if (maintenanceRequest && assignedToId) {
+        await this.createNotification({
+          type: "maintenance_assigned",
+          title: "Maintenance Request Assigned to You",
+          message: `You have been assigned a maintenance request for ${maintenanceRequest.plate_number}. Priority: ${maintenanceRequest.priority}. Issue: ${maintenanceRequest.description}`,
+          priority:
+            maintenanceRequest.priority === "critical" ? "high" : "medium",
+          targetUsers: [assignedToId],
+          metadata: {
+            maintenance_request_id: maintenanceRequestId,
+            vehicle_id: maintenanceRequest.vehicle_id,
+            plate_number: maintenanceRequest.plate_number,
+            priority: maintenanceRequest.priority,
+            description: maintenanceRequest.description,
+            assigned_by: assignedBy,
+          },
+          createdBy: assignedBy,
+        });
+      }
+    } catch (error) {
+      console.error("Error notifying maintenance assignment:", error);
+    }
+  }
+
+  // Maintenance status update notification
+  static async notifyMaintenanceStatusUpdate(
+    maintenanceRequestId,
+    oldStatus,
+    newStatus,
+    updatedBy,
+  ) {
+    try {
+      const MaintenanceRequest = require("../models/MaintenanceRequest");
+      const maintenanceRequest =
+        await MaintenanceRequest.findById(maintenanceRequestId);
+
+      if (maintenanceRequest) {
+        let title = "Maintenance Request Updated";
+        let message = `Your maintenance request for ${maintenanceRequest.plate_number} has been updated from "${oldStatus}" to "${newStatus}".`;
+        let priority = "medium";
+
+        // Customize message based on status
+        switch (newStatus) {
+          case "in_progress":
+            title = "Maintenance Work Started";
+            message = `Maintenance work has started on ${maintenanceRequest.plate_number}. ${maintenanceRequest.assigned_to_name ? `Assigned to: ${maintenanceRequest.assigned_to_name}` : ""}`;
+            break;
+          case "completed":
+            title = "Maintenance Work Completed";
+            message = `Maintenance work on ${maintenanceRequest.plate_number} has been completed. The vehicle is ready for use.`;
+            priority = "high";
+            break;
+          case "cancelled":
+            title = "Maintenance Request Cancelled";
+            message = `Your maintenance request for ${maintenanceRequest.plate_number} has been cancelled.`;
+            break;
+        }
+
+        await this.createNotification({
+          type:
+            newStatus === "completed"
+              ? "maintenance_completed"
+              : "maintenance_status_updated",
+          title,
+          message,
+          priority,
+          targetUsers: [maintenanceRequest.requested_by],
+          metadata: {
+            maintenance_request_id: maintenanceRequestId,
+            vehicle_id: maintenanceRequest.vehicle_id,
+            plate_number: maintenanceRequest.plate_number,
+            old_status: oldStatus,
+            new_status: newStatus,
+            assigned_to_name: maintenanceRequest.assigned_to_name,
+            updated_by: updatedBy,
+          },
+          createdBy: updatedBy,
+        });
+      }
+    } catch (error) {
+      console.error("Error notifying maintenance status update:", error);
+    }
+  }
+
+  // Exit request submission notification
+  static async notifyExitRequestSubmission(exitRequestId, createdBy) {
+    try {
+      const ExitRequest = require("../models/ExitRequest");
+      const exitRequest = await ExitRequest.findById(exitRequestId);
+
+      if (exitRequest) {
+        await this.createNotification({
+          type: "exit_request_submitted",
+          title: "New Exit Request Submitted",
+          message: `${exitRequest.driver_name} has submitted an exit request for ${exitRequest.destination}. Vehicle: ${exitRequest.plate_number}. Purpose: ${exitRequest.purpose}.`,
+          priority: "medium",
+          targetRoles: ["vehicle_manager", "system_admin"],
+          metadata: {
+            exit_request_id: exitRequestId,
+            vehicle_id: exitRequest.vehicle_id,
+            plate_number: exitRequest.plate_number,
+            driver_name: exitRequest.driver_name,
+            destination: exitRequest.destination,
+            purpose: exitRequest.purpose,
+            expected_return: exitRequest.expected_return,
+          },
+          createdBy,
+        });
+      }
+    } catch (error) {
+      console.error("Error notifying exit request submission:", error);
+    }
+  }
+
   // Exit request status notification
   static async notifyExitRequestStatus(exitRequestId, status, reason = null) {
     try {

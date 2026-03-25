@@ -49,6 +49,12 @@ exports.createExitRequest = async (req, res, next) => {
     const exitRequest = await ExitRequest.findById(requestId);
     const transformedRequest = transformExitRequest(exitRequest);
 
+    // Create notification for vehicle managers
+    await NotificationService.notifyExitRequestSubmission(
+      requestId,
+      req.user.id,
+    );
+
     // Emit real-time notification to vehicle managers
     emitToRole("vehicle_manager", "exit_request:created", transformedRequest);
 
@@ -160,7 +166,11 @@ exports.approveExitRequest = async (req, res, next) => {
     emitToUser(request.driver_id, "exit_request:approved", transformedRequest);
     emitToRole("security_guard", "exit_request:approved", transformedRequest);
 
-    successResponse(res, transformedRequest, "Exit request approved successfully");
+    successResponse(
+      res,
+      transformedRequest,
+      "Exit request approved successfully",
+    );
   } catch (error) {
     next(error);
   }

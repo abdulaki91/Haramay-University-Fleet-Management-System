@@ -247,8 +247,12 @@ const createNotificationTables = async (connection) => {
       ('schedule_assigned', 'New schedule has been assigned to driver', '["web", "email"]'),
       ('schedule_updated', 'Existing schedule has been modified', '["web", "email"]'),
       ('schedule_cancelled', 'Schedule has been cancelled', '["web", "email"]'),
+      ('exit_request_submitted', 'New exit request has been submitted', '["web", "email"]'),
       ('exit_request_approved', 'Exit request has been approved', '["web", "email"]'),
       ('exit_request_rejected', 'Exit request has been rejected', '["web", "email"]'),
+      ('maintenance_requested', 'New maintenance request has been submitted', '["web", "email"]'),
+      ('maintenance_assigned', 'Maintenance request has been assigned to you', '["web", "email"]'),
+      ('maintenance_status_updated', 'Maintenance request status has been updated', '["web", "email"]'),
       ('maintenance_completed', 'Vehicle maintenance has been completed', '["web", "email"]'),
       ('vehicle_status_changed', 'Vehicle status has been updated', '["web", "email"]'),
       ('system_alert', 'Important system-wide notifications', '["web", "email"]')
