@@ -67,6 +67,7 @@ export default function SchedulesPage() {
     returnTime: undefined as Date | undefined,
     purpose: "",
     passengers: 1,
+    notes: "",
   });
 
   const createMutation = useMutation({
@@ -108,19 +109,21 @@ export default function SchedulesPage() {
       returnTime: undefined,
       purpose: "",
       passengers: 1,
+      notes: "",
     });
   };
 
   const openEditDialog = (schedule: Schedule) => {
     setEditingSchedule(schedule);
     setForm({
-      vehicleId: schedule.vehicleId,
-      driverId: schedule.driverId,
+      vehicleId: String(schedule.vehicleId),
+      driverId: String(schedule.driverId),
       destination: schedule.destination,
       departureTime: new Date(schedule.departureTime),
       returnTime: new Date(schedule.returnTime),
       purpose: schedule.purpose,
       passengers: schedule.passengers,
+      notes: schedule.notes || "",
     });
     setDialogOpen(true);
   };
@@ -160,6 +163,7 @@ export default function SchedulesPage() {
       destination: form.destination,
       purpose: form.purpose,
       passengers: form.passengers,
+      notes: form.notes,
       departureTime: form.departureTime.toISOString(),
       returnTime: form.returnTime.toISOString(),
       status: editingSchedule ? editingSchedule.status : "scheduled",
@@ -186,9 +190,9 @@ export default function SchedulesPage() {
       label: t("schedules.vehicle"),
       render: (s: Schedule) => (
         <div>
-          <div className="font-medium">{s.vehiclePlateNumber}</div>
+          <div className="font-medium">{s.plate_number}</div>
           <div className="text-sm text-muted-foreground">
-            {s.vehicleMake} {s.vehicleModel}
+            {s.make} {s.model}
           </div>
         </div>
       ),
@@ -200,18 +204,37 @@ export default function SchedulesPage() {
         <span className="font-medium">{s.destination}</span>
       ),
     },
-    { key: "purpose", label: t("schedules.purpose") },
     {
-      key: "departureTime",
-      label: t("schedules.departure"),
-      render: (s: Schedule) => new Date(s.departureTime).toLocaleString(),
+      key: "purpose",
+      label: t("schedules.purpose"),
+      render: (s: Schedule) => (
+        <div className="max-w-xs">
+          <span className="text-sm">{s.purpose}</span>
+        </div>
+      ),
     },
     {
-      key: "returnTime",
-      label: t("schedules.return"),
-      render: (s: Schedule) => new Date(s.returnTime).toLocaleString(),
+      key: "schedule",
+      label: t("schedules.schedule"),
+      render: (s: Schedule) => (
+        <div className="text-sm">
+          <div>
+            <strong>Departure:</strong>{" "}
+            {new Date(s.departureTime).toLocaleString()}
+          </div>
+          <div>
+            <strong>Return:</strong> {new Date(s.returnTime).toLocaleString()}
+          </div>
+        </div>
+      ),
     },
-    { key: "passengers", label: t("schedules.passengers") },
+    {
+      key: "passengers",
+      label: t("schedules.passengers"),
+      render: (s: Schedule) => (
+        <span className="text-center block">{s.passengers}</span>
+      ),
+    },
     {
       key: "status",
       label: t("schedules.status"),
@@ -220,7 +243,25 @@ export default function SchedulesPage() {
     {
       key: "createdBy",
       label: t("schedules.createdBy"),
-      render: (s: Schedule) => s.createdByName || "N/A",
+      render: (s: Schedule) => (
+        <div className="text-sm">
+          <div>{s.created_by_name || "N/A"}</div>
+          <div className="text-xs text-muted-foreground">
+            {new Date(s.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "notes",
+      label: t("schedules.notes"),
+      render: (s: Schedule) => (
+        <div className="max-w-xs">
+          <span className="text-sm text-muted-foreground">
+            {s.notes || "No notes"}
+          </span>
+        </div>
+      ),
     },
   ];
 
@@ -233,6 +274,16 @@ export default function SchedulesPage() {
       ),
     },
     { key: "purpose", label: t("schedules.purpose") },
+    {
+      key: "driver",
+      label: t("schedules.driver"),
+      render: (s: Schedule) => s.driver_name || "N/A",
+    },
+    {
+      key: "vehicle",
+      label: t("schedules.vehicle"),
+      render: (s: Schedule) => s.plate_number || "N/A",
+    },
     {
       key: "departureTime",
       label: t("schedules.departure"),
@@ -310,6 +361,12 @@ export default function SchedulesPage() {
   // Choose columns based on user role
   const columns = user.role === "driver" ? driverColumns : schedulerColumns;
 
+  // Filter schedules based on user role
+  const filteredSchedules =
+    user.role === "driver"
+      ? schedules.filter((s) => String(s.driverId) === String(user.id))
+      : schedules;
+
   if (isLoading)
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -325,7 +382,16 @@ export default function SchedulesPage() {
           <p className="page-subtitle">{t("schedules.subtitle")}</p>
         </div>
         {canCreate && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) {
+                setEditingSchedule(null);
+                resetForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button onClick={openCreateDialog}>
                 <Plus size={16} className="mr-2" />{" "}
@@ -352,9 +418,12 @@ export default function SchedulesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {vehicles
-                        .filter((v) => v.status === "available")
+                        .filter(
+                          (v) =>
+                            v.status === "available" || v.id === form.vehicleId,
+                        )
                         .map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
+                          <SelectItem key={v.id} value={String(v.id)}>
                             {v.plateNumber} — {v.make} {v.model}
                           </SelectItem>
                         ))}
@@ -377,7 +446,7 @@ export default function SchedulesPage() {
                         </div>
                       ) : (
                         drivers.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
+                          <SelectItem key={d.id} value={String(d.id)}>
                             {d.fullName} ({d.email})
                           </SelectItem>
                         ))
@@ -438,6 +507,16 @@ export default function SchedulesPage() {
                     }
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>{t("schedules.notes")}</Label>
+                  <Input
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm({ ...form, notes: e.target.value })
+                    }
+                    placeholder="Optional notes about this schedule"
+                  />
+                </div>
                 <Button type="submit" className="w-full">
                   {editingSchedule
                     ? t("schedules.updateSchedule")
@@ -450,7 +529,7 @@ export default function SchedulesPage() {
       </div>
       <DataTable
         columns={columns}
-        data={schedules}
+        data={filteredSchedules}
         searchKeys={["destination", "purpose"]}
       />
     </div>

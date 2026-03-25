@@ -102,6 +102,9 @@
     "scheduleCreated": "Schedule created",
     "scheduleUpdated": "Schedule updated",
     "scheduleDeleted": "Schedule deleted",
+    "createdBy": "Created By",
+    "schedule": "Schedule",
+    "notes": "Notes",
     "deleteConfirmTitle": "Delete Schedule",
     "deleteConfirmMessage": "Are you sure you want to delete this schedule? This action cannot be undone."
   },

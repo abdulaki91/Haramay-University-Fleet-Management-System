@@ -52,7 +52,14 @@ export interface Schedule {
   status: "scheduled" | "in_progress" | "completed" | "cancelled";
   purpose: string;
   passengers: number;
+  notes?: string;
   createdAt: string;
+  // Additional fields from API joins
+  plate_number?: string;
+  make?: string;
+  model?: string;
+  driver_name?: string;
+  created_by_name?: string;
 }
 
 export interface FuelRecord {
