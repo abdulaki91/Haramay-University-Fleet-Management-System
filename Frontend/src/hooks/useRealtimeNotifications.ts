@@ -53,7 +53,7 @@ export const useRealtimeNotifications = () => {
 
     socketService.on("exit_request:approved", (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["exitRequests"] });
-      if (user.role === "driver" && data.driverId === user.id) {
+      if (user.role === "driver" && String(data.driverId) === String(user.id)) {
         toast({
           title: "Exit Request Approved ✅",
           description: `Your request for ${data.destination || "exit"} has been approved`,
@@ -70,7 +70,7 @@ export const useRealtimeNotifications = () => {
 
     socketService.on("exit_request:rejected", (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["exitRequests"] });
-      if (user.role === "driver" && data.driverId === user.id) {
+      if (user.role === "driver" && String(data.driverId) === String(user.id)) {
         toast({
           title: "Exit Request Rejected ❌",
           description: `Your request for ${data.destination || "exit"} was rejected`,

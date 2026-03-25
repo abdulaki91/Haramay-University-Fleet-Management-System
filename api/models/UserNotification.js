@@ -90,18 +90,28 @@ class UserNotification {
     return rows[0].count;
   }
 
-  static async findPendingByChannel(channel, limit = 100) {
-    const [rows] = await pool.query(
-      `SELECT un.*, n.title, n.message, n.priority, n.metadata,
-              u.email, u.phone, u.first_name, u.last_name
+  static async findPendingByChannel(channel, notificationId = null, limit = 100) {
+    let query = `
+      SELECT un.*, n.title, n.message, n.priority, n.metadata, n.created_at as notification_created_at,
+              u.email, u.phone, u.first_name, u.last_name,
+              nt.name as type_name
        FROM user_notifications un
        JOIN notifications n ON un.notification_id = n.id
        JOIN users u ON un.user_id = u.id
+       JOIN notification_types nt ON n.type_id = nt.id
        WHERE un.channel = ? AND un.status = 'pending'
-       ORDER BY n.priority DESC, n.created_at ASC
-       LIMIT ?`,
-      [channel, limit],
-    );
+    `;
+    const params = [channel];
+
+    if (notificationId) {
+      query += " AND un.notification_id = ?";
+      params.push(notificationId);
+    }
+
+    query += " ORDER BY n.priority DESC, n.created_at ASC LIMIT ?";
+    params.push(limit);
+
+    const [rows] = await pool.query(query, params);
     return rows;
   }
 

@@ -155,12 +155,13 @@ exports.updateMaintenanceStatus = async (req, res, next) => {
     }
 
     const updatedRequest = await MaintenanceRequest.findById(requestId);
+    const transformedRequest = transformMaintenanceRequest(updatedRequest);
 
     // Emit real-time notification to requester and relevant roles
-    emitToUser(request.requested_by, "maintenance:updated", updatedRequest);
-    emitToRole("vehicle_manager", "maintenance:updated", updatedRequest);
+    emitToUser(request.requested_by, "maintenance:updated", transformedRequest);
+    emitToRole("vehicle_manager", "maintenance:updated", transformedRequest);
     if (assigned_to) {
-      emitToUser(assigned_to, "maintenance:assigned", updatedRequest);
+      emitToUser(assigned_to, "maintenance:assigned", transformedRequest);
     }
 
     successResponse(

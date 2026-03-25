@@ -130,24 +130,22 @@ class NotificationService {
   static async sendWebNotifications(notificationId) {
     try {
       const webNotifications =
-        await UserNotification.findPendingByChannel("web");
+        await UserNotification.findPendingByChannel("web", notificationId);
 
       for (const userNotif of webNotifications) {
-        if (userNotif.notification_id === notificationId) {
-          // Emit to specific user
-          emitToUser(userNotif.user_id, "notification:new", {
-            id: userNotif.id,
-            title: userNotif.title,
-            message: userNotif.message,
-            priority: userNotif.priority,
-            type: userNotif.type_name,
-            metadata: JSON.parse(userNotif.metadata || "{}"),
-            createdAt: userNotif.notification_created_at,
-          });
+        // Emit to specific user
+        emitToUser(userNotif.user_id, "notification:new", {
+          id: userNotif.id,
+          title: userNotif.title,
+          message: userNotif.message,
+          priority: userNotif.priority,
+          type: userNotif.type_name,
+          metadata: JSON.parse(userNotif.metadata || "{}"),
+          createdAt: userNotif.notification_created_at,
+        });
 
-          // Mark as sent
-          await UserNotification.updateStatus(userNotif.id, "sent");
-        }
+        // Mark as sent
+        await UserNotification.updateStatus(userNotif.id, "sent");
       }
     } catch (error) {
       console.error("Error sending web notifications:", error);
@@ -229,53 +227,6 @@ class NotificationService {
           priority: "medium",
           targetRoles: ["vehicle_manager"],
           targetUsers: [vehicle.driver_id], // If there's a current driver
-          metadata: {
-            vehicle_id: vehicle.id,
-            plate_number: vehicle.plate_number,
-            last_fuel_amount: vehicle.fuel_amount,
-            days_since_refuel: Math.floor(
-              (Date.now() - new Date(vehicle.fueled_at)) /
-                (1000 * 60 * 60 * 24),
-            ),
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error checking low fuel:", error);
-    }
-  }
-
-  // Low fuel notifications
-  static async checkLowFuel() {
-    try {
-      // Get vehicles with low fuel (less than 25% based on last fuel record)
-      const { pool } = require("../config/database");
-      const [vehicles] = await pool.query(`
-        SELECT v.*, fr.fuel_amount, fr.odometer_reading, fr.fueled_at,
-               (SELECT AVG(fuel_amount) FROM fuel_records WHERE vehicle_id = v.id) as avg_fuel
-        FROM vehicles v
-        JOIN fuel_records fr ON v.id = fr.vehicle_id
-        WHERE v.status IN ('available', 'in_use')
-        AND fr.fueled_at = (
-          SELECT MAX(fueled_at) 
-          FROM fuel_records 
-          WHERE vehicle_id = v.id
-        )
-        AND DATEDIFF(NOW(), fr.fueled_at) >= 7 -- No fuel record in last 7 days
-        AND fr.fuel_amount < (
-          SELECT AVG(fuel_amount) * 0.25 
-          FROM fuel_records 
-          WHERE vehicle_id = v.id
-        )
-      `);
-
-      for (const vehicle of vehicles) {
-        await this.createNotification({
-          type: "fuel_low",
-          title: `Low Fuel Alert - ${vehicle.plate_number}`,
-          message: `Vehicle ${vehicle.plate_number} may be running low on fuel. Last refuel was ${Math.floor((Date.now() - new Date(vehicle.fueled_at)) / (1000 * 60 * 60 * 24))} days ago.`,
-          priority: "medium",
-          targetRoles: ["vehicle_manager"],
           metadata: {
             vehicle_id: vehicle.id,
             plate_number: vehicle.plate_number,

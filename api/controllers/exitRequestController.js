@@ -169,13 +169,14 @@ exports.approveExitRequest = async (req, res, next) => {
 
     await ExitRequest.approve(requestId, req.user.id);
     const updatedRequest = await ExitRequest.findById(requestId);
+    const transformedRequest = transformExitRequest(updatedRequest);
 
     // Send notification to driver
     await NotificationService.notifyExitRequestStatus(requestId, "approved");
 
     // Emit real-time notifications
-    emitToUser(request.driver_id, "exit_request:approved", updatedRequest);
-    emitToRole("security_guard", "exit_request:approved", updatedRequest);
+    emitToUser(request.driver_id, "exit_request:approved", transformedRequest);
+    emitToRole("security_guard", "exit_request:approved", transformedRequest);
 
     successResponse(res, updatedRequest, "Exit request approved successfully");
   } catch (error) {
@@ -204,6 +205,7 @@ exports.rejectExitRequest = async (req, res, next) => {
 
     await ExitRequest.reject(requestId, req.user.id, rejection_reason);
     const updatedRequest = await ExitRequest.findById(requestId);
+    const transformedRequest = transformExitRequest(updatedRequest);
 
     // Send notification to driver
     await NotificationService.notifyExitRequestStatus(
@@ -213,7 +215,7 @@ exports.rejectExitRequest = async (req, res, next) => {
     );
 
     // Emit real-time notification to driver
-    emitToUser(request.driver_id, "exit_request:rejected", updatedRequest);
+    emitToUser(request.driver_id, "exit_request:rejected", transformedRequest);
 
     successResponse(res, updatedRequest, "Exit request rejected");
   } catch (error) {
