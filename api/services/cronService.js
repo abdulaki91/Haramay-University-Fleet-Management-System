@@ -16,13 +16,23 @@ class CronService {
         }
       });
 
-      // Run fuel checks every 6 hours
-      cron.schedule("0 */6 * * *", async () => {
+      // Run fuel checks every 4 hours (more frequent monitoring)
+      cron.schedule("0 */4 * * *", async () => {
         console.log("Running fuel level checks...");
         try {
           await NotificationService.checkLowFuel();
         } catch (error) {
           console.error("Error in fuel level checks:", error);
+        }
+      });
+
+      // Run critical fuel checks every hour during business hours (8 AM - 6 PM)
+      cron.schedule("0 8-18 * * *", async () => {
+        console.log("Running critical fuel level checks...");
+        try {
+          await NotificationService.checkLowFuel();
+        } catch (error) {
+          console.error("Error in critical fuel level checks:", error);
         }
       });
 

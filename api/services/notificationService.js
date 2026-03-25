@@ -284,51 +284,222 @@ class NotificationService {
     }
   }
 
-  // Low fuel notifications
+  // Enhanced low fuel notifications with multiple detection methods
   static async checkLowFuel() {
     try {
-      // Get vehicles with low fuel (less than 25% based on last fuel record)
+      console.log("Checking for low fuel conditions...");
       const { pool } = require("../config/database");
-      const [vehicles] = await pool.query(`
-        SELECT v.*, fr.fuel_amount, fr.odometer_reading, fr.fueled_at,
-               (SELECT AVG(fuel_amount) FROM fuel_records WHERE vehicle_id = v.id) as avg_fuel
+
+      // Method 1: Check vehicles with no recent fuel records (likely running low)
+      const [vehiclesNoRecentFuel] = await pool.query(`
+        SELECT v.id, v.plate_number, v.make, v.model, v.fuel_capacity,
+               COALESCE(MAX(fr.fueled_at), v.registered_at) as last_fuel_date,
+               COALESCE(MAX(fr.fuel_amount), 0) as last_fuel_amount,
+               COALESCE(MAX(fr.odometer_reading), v.mileage) as last_odometer,
+               DATEDIFF(NOW(), COALESCE(MAX(fr.fueled_at), v.registered_at)) as days_since_fuel
         FROM vehicles v
-        JOIN fuel_records fr ON v.id = fr.vehicle_id
+        LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id
         WHERE v.status IN ('available', 'in_use')
-        AND fr.fueled_at = (
-          SELECT MAX(fueled_at) 
-          FROM fuel_records 
-          WHERE vehicle_id = v.id
-        )
-        AND DATEDIFF(NOW(), fr.fueled_at) >= 7 -- No fuel record in last 7 days
-        AND fr.fuel_amount < (
-          SELECT AVG(fuel_amount) * 0.25 
-          FROM fuel_records 
-          WHERE vehicle_id = v.id
-        )
+        GROUP BY v.id, v.plate_number, v.make, v.model, v.fuel_capacity, v.registered_at, v.mileage
+        HAVING days_since_fuel >= 14 -- No fuel record in 14+ days
       `);
 
-      for (const vehicle of vehicles) {
+      // Method 2: Check vehicles with low fuel amounts in recent records
+      const [vehiclesLowFuelAmount] = await pool.query(`
+        SELECT v.id, v.plate_number, v.make, v.model, v.fuel_capacity,
+               fr.fuel_amount, fr.fueled_at, fr.odometer_reading,
+               AVG(fr2.fuel_amount) as avg_fuel_amount
+        FROM vehicles v
+        JOIN fuel_records fr ON v.id = fr.vehicle_id
+        LEFT JOIN fuel_records fr2 ON v.id = fr2.vehicle_id
+        WHERE v.status IN ('available', 'in_use')
+        AND fr.fueled_at = (SELECT MAX(fueled_at) FROM fuel_records WHERE vehicle_id = v.id)
+        AND fr.fuel_amount < (v.fuel_capacity * 0.25) -- Less than 25% of tank capacity
+        GROUP BY v.id, v.plate_number, v.make, v.model, v.fuel_capacity, fr.fuel_amount, fr.fueled_at, fr.odometer_reading
+      `);
+
+      // Method 3: Check vehicles with high mileage since last fuel (estimated consumption)
+      const [vehiclesHighMileage] = await pool.query(`
+        SELECT v.id, v.plate_number, v.make, v.model, v.fuel_capacity,
+               fr.fuel_amount, fr.fueled_at, fr.odometer_reading,
+               COALESCE(MAX(fr2.odometer_reading), v.mileage) as current_odometer,
+               (COALESCE(MAX(fr2.odometer_reading), v.mileage) - fr.odometer_reading) as distance_since_fuel
+        FROM vehicles v
+        JOIN fuel_records fr ON v.id = fr.vehicle_id
+        LEFT JOIN fuel_records fr2 ON v.id = fr2.vehicle_id AND fr2.fueled_at > fr.fueled_at
+        WHERE v.status IN ('available', 'in_use')
+        AND fr.fueled_at = (SELECT MAX(fueled_at) FROM fuel_records WHERE vehicle_id = v.id)
+        GROUP BY v.id, v.plate_number, v.make, v.model, v.fuel_capacity, fr.fuel_amount, fr.fueled_at, fr.odometer_reading
+        HAVING distance_since_fuel >= 500 -- More than 500km since last fuel
+      `);
+
+      // Process notifications for each detection method
+      await this.processLowFuelNotifications(
+        vehiclesNoRecentFuel,
+        "no_recent_fuel",
+      );
+      await this.processLowFuelNotifications(
+        vehiclesLowFuelAmount,
+        "low_fuel_amount",
+      );
+      await this.processLowFuelNotifications(
+        vehiclesHighMileage,
+        "high_mileage",
+      );
+
+      console.log(
+        `✓ Low fuel check completed. Found ${vehiclesNoRecentFuel.length + vehiclesLowFuelAmount.length + vehiclesHighMileage.length} potential issues.`,
+      );
+    } catch (error) {
+      console.error("Error checking low fuel:", error);
+    }
+  }
+
+  // Process low fuel notifications with different urgency levels
+  static async processLowFuelNotifications(vehicles, detectionMethod) {
+    for (const vehicle of vehicles) {
+      let priority = "medium";
+      let title = "";
+      let message = "";
+      let urgencyLevel = "";
+
+      switch (detectionMethod) {
+        case "no_recent_fuel":
+          const daysSinceFuel = vehicle.days_since_fuel;
+          if (daysSinceFuel >= 21) {
+            priority = "critical";
+            urgencyLevel = "CRITICAL";
+          } else if (daysSinceFuel >= 14) {
+            priority = "high";
+            urgencyLevel = "HIGH";
+          }
+
+          title = `${urgencyLevel} Fuel Alert - ${vehicle.plate_number}`;
+          message = `Vehicle ${vehicle.plate_number} (${vehicle.make} ${vehicle.model}) has not been refueled for ${daysSinceFuel} days. Last fuel record: ${new Date(vehicle.last_fuel_date).toLocaleDateString()}. Please check fuel level and refuel if necessary.`;
+          break;
+
+        case "low_fuel_amount":
+          const fuelPercentage = (
+            (vehicle.fuel_amount / vehicle.fuel_capacity) *
+            100
+          ).toFixed(1);
+          if (fuelPercentage <= 10) {
+            priority = "critical";
+            urgencyLevel = "CRITICAL";
+          } else if (fuelPercentage <= 25) {
+            priority = "high";
+            urgencyLevel = "HIGH";
+          }
+
+          title = `${urgencyLevel} Low Fuel - ${vehicle.plate_number}`;
+          message = `Vehicle ${vehicle.plate_number} is running low on fuel (${fuelPercentage}% remaining - ${vehicle.fuel_amount}L). Last refueled: ${new Date(vehicle.fueled_at).toLocaleDateString()}. Immediate refueling recommended.`;
+          break;
+
+        case "high_mileage":
+          const distance = vehicle.distance_since_fuel;
+          if (distance >= 800) {
+            priority = "high";
+            urgencyLevel = "HIGH";
+          } else if (distance >= 500) {
+            priority = "medium";
+            urgencyLevel = "MEDIUM";
+          }
+
+          title = `${urgencyLevel} Fuel Check Needed - ${vehicle.plate_number}`;
+          message = `Vehicle ${vehicle.plate_number} has traveled ${distance}km since last refuel on ${new Date(vehicle.fueled_at).toLocaleDateString()}. Please check fuel level and refuel if necessary.`;
+          break;
+      }
+
+      // Check if we already sent a similar notification recently (avoid spam)
+      const recentNotification = await this.checkRecentFuelNotification(
+        vehicle.id,
+      );
+      if (!recentNotification) {
         await this.createNotification({
           type: "fuel_low",
-          title: `Low Fuel Alert - ${vehicle.plate_number}`,
-          message: `Vehicle ${vehicle.plate_number} may be running low on fuel. Last refuel was ${Math.floor((Date.now() - new Date(vehicle.fueled_at)) / (1000 * 60 * 60 * 24))} days ago.`,
-          priority: "medium",
+          title,
+          message,
+          priority,
           targetRoles: ["vehicle_manager"],
-          targetUsers: [vehicle.driver_id], // If there's a current driver
           metadata: {
             vehicle_id: vehicle.id,
             plate_number: vehicle.plate_number,
-            last_fuel_amount: vehicle.fuel_amount,
-            days_since_refuel: Math.floor(
-              (Date.now() - new Date(vehicle.fueled_at)) /
-                (1000 * 60 * 60 * 24),
-            ),
+            detection_method: detectionMethod,
+            fuel_amount: vehicle.fuel_amount || 0,
+            fuel_capacity: vehicle.fuel_capacity || 0,
+            days_since_fuel: vehicle.days_since_fuel || 0,
+            distance_since_fuel: vehicle.distance_since_fuel || 0,
+            last_fuel_date: vehicle.last_fuel_date,
+            urgency_level: urgencyLevel,
+          },
+        });
+      }
+    }
+  }
+
+  // Check if we sent a fuel notification for this vehicle recently
+  static async checkRecentFuelNotification(vehicleId) {
+    try {
+      const { pool } = require("../config/database");
+      const [rows] = await pool.query(
+        `
+        SELECT n.id 
+        FROM notifications n
+        JOIN notification_types nt ON n.type_id = nt.id
+        WHERE nt.name = 'fuel_low'
+        AND JSON_EXTRACT(n.metadata, '$.vehicle_id') = ?
+        AND n.created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        LIMIT 1
+      `,
+        [vehicleId],
+      );
+
+      return rows.length > 0;
+    } catch (error) {
+      console.error("Error checking recent fuel notifications:", error);
+      return false;
+    }
+  }
+
+  // Emergency fuel alert for critical situations
+  static async sendEmergencyFuelAlert(vehicleId, currentLocation = null) {
+    try {
+      const { pool } = require("../config/database");
+      const [vehicleRows] = await pool.query(
+        `
+        SELECT v.*, CONCAT(u.first_name, ' ', u.last_name) as current_driver,
+               u.phone as driver_phone, u.email as driver_email
+        FROM vehicles v
+        LEFT JOIN schedules s ON v.id = s.vehicle_id AND s.status = 'active'
+        LEFT JOIN users u ON s.driver_id = u.id
+        WHERE v.id = ?
+      `,
+        [vehicleId],
+      );
+
+      if (vehicleRows.length > 0) {
+        const vehicle = vehicleRows[0];
+
+        await this.createNotification({
+          type: "fuel_low",
+          title: `🚨 EMERGENCY: Vehicle Out of Fuel - ${vehicle.plate_number}`,
+          message: `URGENT: Vehicle ${vehicle.plate_number} has run out of fuel${currentLocation ? ` at ${currentLocation}` : ""}. ${vehicle.current_driver ? `Driver: ${vehicle.current_driver} (${vehicle.driver_phone})` : "No active driver assigned"}. Immediate assistance required.`,
+          priority: "critical",
+          targetRoles: ["vehicle_manager", "system_admin"],
+          targetUsers: vehicle.current_driver ? [vehicle.driver_id] : [],
+          metadata: {
+            vehicle_id: vehicleId,
+            plate_number: vehicle.plate_number,
+            emergency: true,
+            current_location: currentLocation,
+            driver_name: vehicle.current_driver,
+            driver_phone: vehicle.driver_phone,
+            alert_type: "emergency_fuel_out",
           },
         });
       }
     } catch (error) {
-      console.error("Error checking low fuel:", error);
+      console.error("Error sending emergency fuel alert:", error);
     }
   }
 

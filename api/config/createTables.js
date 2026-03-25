@@ -46,6 +46,7 @@ const createTables = async (connection) => {
         capacity INT,
         type VARCHAR(50),
         fuel_type ENUM('petrol', 'diesel', 'electric', 'hybrid') NOT NULL,
+        fuel_capacity DECIMAL(5, 2) DEFAULT 50.00 COMMENT 'Fuel tank capacity in liters',
         status ENUM('available', 'in_use', 'maintenance', 'out_of_service') DEFAULT 'available',
         mileage DECIMAL(10, 2) DEFAULT 0,
         registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

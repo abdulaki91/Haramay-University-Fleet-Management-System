@@ -1,8 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fuelService, vehicleService } from "@/api/services";
+import {
+  fuelService,
+  vehicleService,
+  notificationService,
+} from "@/api/services";
 import DataTable from "@/components/DataTable";
 import type { FuelRecord } from "@/types";
-import { Fuel, Plus } from "lucide-react";
+import { Fuel, Plus, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,7 @@ export default function FuelBalancePage() {
     queryFn: vehicleService.getAll,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [emergencyDialogOpen, setEmergencyDialogOpen] = useState(false);
   const [form, setForm] = useState({
     vehicleId: "",
     liters: 0,
@@ -47,6 +52,10 @@ export default function FuelBalancePage() {
     odometerReading: 0,
     station: "",
     fueledAt: new Date().toISOString().slice(0, 16),
+  });
+  const [emergencyForm, setEmergencyForm] = useState({
+    vehicleId: "",
+    currentLocation: "",
   });
 
   const addFuelMutation = useMutation({
@@ -69,9 +78,42 @@ export default function FuelBalancePage() {
     },
   });
 
+  const emergencyAlertMutation = useMutation({
+    mutationFn: (data: { vehicleId: string; currentLocation?: string }) =>
+      notificationService.sendEmergencyFuelAlert(
+        data.vehicleId,
+        data.currentLocation,
+      ),
+    onSuccess: () => {
+      setEmergencyDialogOpen(false);
+      toast({
+        title: "Emergency Alert Sent",
+        description:
+          "Emergency fuel alert has been sent to vehicle managers and administrators.",
+        variant: "default",
+      });
+      setEmergencyForm({
+        vehicleId: "",
+        currentLocation: "",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Alert Failed",
+        description: error.message || "Failed to send emergency fuel alert",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addFuelMutation.mutate(form);
+  };
+
+  const handleEmergencySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    emergencyAlertMutation.mutate(emergencyForm);
   };
 
   const getPlate = (id: string) =>
@@ -134,105 +176,180 @@ export default function FuelBalancePage() {
           <p className="page-subtitle">{t("fuel.subtitle")}</p>
         </div>
         {canAddFuel && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus size={16} className="mr-2" /> Add Fuel Record
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Fuel Record</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>{t("fuel.vehicle")}</Label>
-                  <Select
-                    value={form.vehicleId}
-                    onValueChange={(v) => setForm({ ...form, vehicleId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select vehicle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicles.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.plateNumber} — {v.make} {v.model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          <div className="flex gap-2">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus size={16} className="mr-2" /> Add Fuel Record
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Fuel Record</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>{t("fuel.liters")}</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.liters}
-                      onChange={(e) =>
-                        setForm({ ...form, liters: Number(e.target.value) })
-                      }
-                      required
-                    />
+                    <Label>{t("fuel.vehicle")}</Label>
+                    <Select
+                      value={form.vehicleId}
+                      onValueChange={(v) => setForm({ ...form, vehicleId: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vehicle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicles.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.plateNumber} — {v.make} {v.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("fuel.liters")}</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={form.liters}
+                        onChange={(e) =>
+                          setForm({ ...form, liters: Number(e.target.value) })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("fuel.costPerLiter")} (ETB)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={form.costPerLiter}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            costPerLiter: Number(e.target.value),
+                          })
+                        }
+                        required
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>{t("fuel.costPerLiter")} (ETB)</Label>
+                    <Label>{t("fuel.odometer")} (km)</Label>
                     <Input
                       type="number"
-                      step="0.01"
-                      value={form.costPerLiter}
+                      value={form.odometerReading}
                       onChange={(e) =>
                         setForm({
                           ...form,
-                          costPerLiter: Number(e.target.value),
+                          odometerReading: Number(e.target.value),
                         })
                       }
                       required
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("fuel.odometer")} (km)</Label>
-                  <Input
-                    type="number"
-                    value={form.odometerReading}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        odometerReading: Number(e.target.value),
-                      })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("fuel.station")}</Label>
-                  <Input
-                    value={form.station}
-                    onChange={(e) =>
-                      setForm({ ...form, station: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("fuel.date")}</Label>
-                  <Input
-                    type="datetime-local"
-                    value={form.fueledAt}
-                    onChange={(e) =>
-                      setForm({ ...form, fueledAt: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full">
-                  {t("common.submit")}
+                  <div className="space-y-2">
+                    <Label>{t("fuel.station")}</Label>
+                    <Input
+                      value={form.station}
+                      onChange={(e) =>
+                        setForm({ ...form, station: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("fuel.date")}</Label>
+                    <Input
+                      type="datetime-local"
+                      value={form.fueledAt}
+                      onChange={(e) =>
+                        setForm({ ...form, fueledAt: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    {t("common.submit")}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={emergencyDialogOpen}
+              onOpenChange={setEmergencyDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <AlertTriangle size={16} className="mr-2" /> Emergency Fuel
+                  Alert
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle size={20} />
+                    Emergency Fuel Alert
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEmergencySubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Vehicle</Label>
+                    <Select
+                      value={emergencyForm.vehicleId}
+                      onValueChange={(v) =>
+                        setEmergencyForm({ ...emergencyForm, vehicleId: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vehicle that needs fuel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicles.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.plateNumber} — {v.make} {v.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Current Location (Optional)</Label>
+                    <Input
+                      value={emergencyForm.currentLocation}
+                      onChange={(e) =>
+                        setEmergencyForm({
+                          ...emergencyForm,
+                          currentLocation: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., Main Campus Gate, Highway KM 15"
+                    />
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-800">
+                      <strong>This will send an emergency alert to:</strong>
+                      <br />• Vehicle Managers
+                      <br />• System Administrators
+                      <br />• Current driver (if assigned)
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    variant="destructive"
+                    disabled={emergencyAlertMutation.isPending}
+                  >
+                    {emergencyAlertMutation.isPending
+                      ? "Sending Alert..."
+                      : "Send Emergency Alert"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 

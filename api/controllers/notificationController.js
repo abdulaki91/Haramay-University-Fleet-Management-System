@@ -298,3 +298,112 @@ exports.getEmailStatus = async (req, res, next) => {
     next(error);
   }
 };
+// Emergency fuel alert (Driver or Vehicle Manager)
+exports.sendEmergencyFuelAlert = async (req, res, next) => {
+  try {
+    const { vehicleId, currentLocation } = req.body;
+
+    if (!vehicleId) {
+      return errorResponse(res, "Vehicle ID is required", 400);
+    }
+
+    // Verify the vehicle exists and user has permission
+    const Vehicle = require("../models/Vehicle");
+    const vehicle = await Vehicle.findById(vehicleId);
+
+    if (!vehicle) {
+      return errorResponse(res, "Vehicle not found", 404);
+    }
+
+    // Send emergency fuel alert
+    await NotificationService.sendEmergencyFuelAlert(
+      vehicleId,
+      currentLocation,
+    );
+
+    successResponse(
+      res,
+      { vehicle_id: vehicleId, location: currentLocation },
+      "Emergency fuel alert sent successfully",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Manual fuel level check (Vehicle Manager or System Admin)
+exports.checkFuelLevels = async (req, res, next) => {
+  try {
+    await NotificationService.checkLowFuel();
+
+    successResponse(
+      res,
+      { timestamp: new Date().toISOString() },
+      "Fuel level check completed successfully",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get fuel monitoring statistics (Vehicle Manager or System Admin)
+exports.getFuelMonitoringStats = async (req, res, next) => {
+  try {
+    const { pool } = require("../config/database");
+
+    // Get vehicles with potential fuel issues
+    const [lowFuelVehicles] = await pool.query(`
+      SELECT v.id, v.plate_number, v.make, v.model, v.fuel_capacity,
+             COALESCE(MAX(fr.fueled_at), v.registered_at) as last_fuel_date,
+             COALESCE(MAX(fr.fuel_amount), 0) as last_fuel_amount,
+             DATEDIFF(NOW(), COALESCE(MAX(fr.fueled_at), v.registered_at)) as days_since_fuel
+      FROM vehicles v
+      LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id
+      WHERE v.status IN ('available', 'in_use')
+      GROUP BY v.id, v.plate_number, v.make, v.model, v.fuel_capacity, v.registered_at
+      HAVING days_since_fuel >= 7
+      ORDER BY days_since_fuel DESC
+    `);
+
+    // Get recent fuel notifications
+    const [recentAlerts] = await pool.query(`
+      SELECT n.id, n.title, n.message, n.priority, n.created_at,
+             JSON_EXTRACT(n.metadata, '$.plate_number') as plate_number,
+             JSON_EXTRACT(n.metadata, '$.urgency_level') as urgency_level
+      FROM notifications n
+      JOIN notification_types nt ON n.type_id = nt.id
+      WHERE nt.name = 'fuel_low'
+      AND n.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+      ORDER BY n.created_at DESC
+      LIMIT 20
+    `);
+
+    // Calculate statistics
+    const stats = {
+      vehicles_needing_attention: lowFuelVehicles.length,
+      critical_alerts: recentAlerts.filter((a) => a.priority === "critical")
+        .length,
+      high_priority_alerts: recentAlerts.filter((a) => a.priority === "high")
+        .length,
+      total_alerts_last_week: recentAlerts.length,
+      vehicles_with_issues: lowFuelVehicles,
+      recent_alerts: recentAlerts.map((alert) => ({
+        id: alert.id,
+        title: alert.title,
+        message: alert.message,
+        priority: alert.priority,
+        plate_number: alert.plate_number?.replace(/"/g, ""),
+        urgency_level: alert.urgency_level?.replace(/"/g, ""),
+        created_at: alert.created_at,
+      })),
+    };
+
+    successResponse(
+      res,
+      stats,
+      "Fuel monitoring statistics retrieved successfully",
+    );
+  } catch (error) {
+    next(error);
+  }
+};

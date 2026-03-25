@@ -111,3 +111,27 @@ router.get(
 );
 
 module.exports = router;
+// Fuel monitoring routes
+router.post(
+  "/fuel/emergency-alert",
+  [
+    authenticate,
+    authorize("driver", "vehicle_manager", "system_admin"),
+    body("vehicleId").notEmpty().withMessage("Vehicle ID is required"),
+    body("currentLocation").optional().isString(),
+    validate,
+  ],
+  notificationController.sendEmergencyFuelAlert,
+);
+
+router.post(
+  "/fuel/check-levels",
+  [authenticate, authorize("vehicle_manager", "system_admin")],
+  notificationController.checkFuelLevels,
+);
+
+router.get(
+  "/fuel/monitoring-stats",
+  [authenticate, authorize("vehicle_manager", "system_admin")],
+  notificationController.getFuelMonitoringStats,
+);

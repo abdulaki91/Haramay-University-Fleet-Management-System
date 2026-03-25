@@ -137,3 +137,20 @@ export const notificationService = {
     return response.data.data;
   },
 };
+  // Fuel monitoring methods
+  sendEmergencyFuelAlert: async (vehicleId: string, currentLocation?: string): Promise<void> => {
+    await api.post("/notifications/fuel/emergency-alert", {
+      vehicleId,
+      currentLocation,
+    });
+  },
+
+  checkFuelLevels: async (): Promise<void> => {
+    await api.post("/notifications/fuel/check-levels");
+  },
+
+  getFuelMonitoringStats: async (): Promise<any> => {
+    const response = await api.get("/notifications/fuel/monitoring-stats");
+    return response.data.data;
+  },
+};
