@@ -82,6 +82,8 @@
     "title": "Vehicle Schedules",
     "subtitle": "View and manage vehicle scheduling",
     "createSchedule": "Create Schedule",
+    "editSchedule": "Edit Schedule",
+    "updateSchedule": "Update Schedule",
     "destination": "Destination",
     "purpose": "Purpose",
     "departure": "Departure",
@@ -97,7 +99,11 @@
     "inProgress": "In Progress",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "scheduleCreated": "Schedule created"
+    "scheduleCreated": "Schedule created",
+    "scheduleUpdated": "Schedule updated",
+    "scheduleDeleted": "Schedule deleted",
+    "deleteConfirmTitle": "Delete Schedule",
+    "deleteConfirmMessage": "Are you sure you want to delete this schedule? This action cannot be undone."
   },
   "fuel": {
     "title": "Fuel Balance",

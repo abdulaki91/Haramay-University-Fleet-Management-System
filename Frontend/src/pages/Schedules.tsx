@@ -10,6 +10,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +34,7 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { useAuthStore } from "@/store/authStore";
 import type { Schedule } from "@/types";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -47,6 +58,7 @@ export default function SchedulesPage() {
     enabled: canCreate, // Only fetch users if user is a scheduler
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [form, setForm] = useState({
     vehicleId: "",
     driverId: "",
@@ -62,18 +74,62 @@ export default function SchedulesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
       setDialogOpen(false);
-      setForm({
-        vehicleId: "",
-        driverId: "",
-        destination: "",
-        departureTime: undefined,
-        returnTime: undefined,
-        purpose: "",
-        passengers: 1,
-      });
+      resetForm();
       toast({ title: t("schedules.scheduleCreated") });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Schedule> }) =>
+      scheduleService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+      setDialogOpen(false);
+      setEditingSchedule(null);
+      resetForm();
+      toast({ title: t("schedules.scheduleUpdated") });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => scheduleService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+      toast({ title: t("schedules.scheduleDeleted") });
+    },
+  });
+
+  const resetForm = () => {
+    setForm({
+      vehicleId: "",
+      driverId: "",
+      destination: "",
+      departureTime: undefined,
+      returnTime: undefined,
+      purpose: "",
+      passengers: 1,
+    });
+  };
+
+  const openEditDialog = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setForm({
+      vehicleId: schedule.vehicleId,
+      driverId: schedule.driverId,
+      destination: schedule.destination,
+      departureTime: new Date(schedule.departureTime),
+      returnTime: new Date(schedule.returnTime),
+      purpose: schedule.purpose,
+      passengers: schedule.passengers,
+    });
+    setDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setEditingSchedule(null);
+    resetForm();
+    setDialogOpen(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,10 +162,18 @@ export default function SchedulesPage() {
       passengers: form.passengers,
       departureTime: form.departureTime.toISOString(),
       returnTime: form.returnTime.toISOString(),
-      status: "scheduled",
+      status: editingSchedule ? editingSchedule.status : "scheduled",
     };
 
-    createMutation.mutate(scheduleData);
+    if (editingSchedule) {
+      updateMutation.mutate({ id: editingSchedule.id, data: scheduleData });
+    } else {
+      createMutation.mutate(scheduleData);
+    }
+  };
+
+  const handleDelete = (scheduleId: string) => {
+    deleteMutation.mutate(scheduleId);
   };
 
   // Filter users to show only drivers
@@ -140,6 +204,62 @@ export default function SchedulesPage() {
       label: t("schedules.status"),
       render: (s: Schedule) => <StatusBadge status={s.status} />,
     },
+    ...(canCreate
+      ? [
+          {
+            key: "actions",
+            label: t("common.actions"),
+            render: (s: Schedule) => (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEditDialog(s)}
+                  disabled={
+                    s.status === "completed" || s.status === "cancelled"
+                  }
+                >
+                  <Edit size={16} />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        s.status === "in_progress" || s.status === "completed"
+                      }
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("schedules.deleteConfirmTitle")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("schedules.deleteConfirmMessage")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {t("common.cancel")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(s.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {t("common.delete")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (isLoading)
@@ -159,14 +279,18 @@ export default function SchedulesPage() {
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={openCreateDialog}>
                 <Plus size={16} className="mr-2" />{" "}
                 {t("schedules.createSchedule")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t("schedules.createSchedule")}</DialogTitle>
+                <DialogTitle>
+                  {editingSchedule
+                    ? t("schedules.editSchedule")
+                    : t("schedules.createSchedule")}
+                </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -267,7 +391,9 @@ export default function SchedulesPage() {
                   />
                 </div>
                 <Button type="submit" className="w-full">
-                  {t("schedules.createSchedule")}
+                  {editingSchedule
+                    ? t("schedules.updateSchedule")
+                    : t("schedules.createSchedule")}
                 </Button>
               </form>
             </DialogContent>

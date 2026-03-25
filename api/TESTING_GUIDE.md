@@ -408,6 +408,109 @@ curl -X GET http://localhost:3000/api/reports/system \
 
 ---
 
+## Step 13: Test First Login Password Change Flow
+
+### 13.1 Admin Creates New User
+
+```bash
+curl -X POST http://localhost:3000/api/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -d '{
+    "first_name": "Test",
+    "last_name": "User",
+    "email": "testuser@haramaya.edu.et",
+    "username": "testuser",
+    "phone": "+251966666666",
+    "role_id": 6
+  }'
+```
+
+**Expected Response**: User created with auto-generated password `testuser@123`
+
+### 13.2 New User First Login
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "testuser@haramaya.edu.et",
+    "password": "testuser@123"
+  }'
+```
+
+**Expected Response**:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": 8,
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "testuser@haramaya.edu.et",
+      "role": "user",
+      "passwordChanged": false
+    }
+  }
+}
+```
+
+**Note**: `passwordChanged: false` indicates user must change password
+
+### 13.3 User Changes Password
+
+```bash
+curl -X PUT http://localhost:3000/api/auth/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer NEW_USER_TOKEN" \
+  -d '{
+    "current_password": "testuser@123",
+    "new_password": "MyNewSecurePassword123!"
+  }'
+```
+
+**Expected Response**:
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully",
+  "data": null
+}
+```
+
+### 13.4 Verify Password Changed Flag
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "testuser@haramaya.edu.et",
+    "password": "MyNewSecurePassword123!"
+  }'
+```
+
+**Expected Response**: `passwordChanged: true` in user object
+
+### 13.5 Test Old Password Doesn't Work
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "testuser@haramaya.edu.et",
+    "password": "testuser@123"
+  }'
+```
+
+**Expected**: 401 Unauthorized - Invalid email or password
+
+---
+
 ## Testing Permission Denials
 
 ### Test 1: Driver tries to create user (should fail)
@@ -520,17 +623,19 @@ curl -X GET http://localhost:3000/health
 ## Complete Workflow Test
 
 1. ✅ Admin creates users for all roles
-2. ✅ Vehicle Manager registers vehicles
-3. ✅ Scheduler creates schedules
-4. ✅ Driver views schedules
-5. ✅ Driver adds fuel record
-6. ✅ Driver creates maintenance request
-7. ✅ Driver creates exit request
-8. ✅ Mechanic views and updates maintenance
-9. ✅ Vehicle Manager approves exit request
-10. ✅ Security Guard views approved exits
-11. ✅ Vehicle Manager generates reports
-12. ✅ Admin views system report
+2. ✅ New user logs in with default password
+3. ✅ New user is forced to change password on first login
+4. ✅ Vehicle Manager registers vehicles
+5. ✅ Scheduler creates schedules
+6. ✅ Driver views schedules
+7. ✅ Driver adds fuel record
+8. ✅ Driver creates maintenance request
+9. ✅ Driver creates exit request
+10. ✅ Mechanic views and updates maintenance
+11. ✅ Vehicle Manager approves exit request
+12. ✅ Security Guard views approved exits
+13. ✅ Vehicle Manager generates reports
+14. ✅ Admin views system report
 
 ---
 

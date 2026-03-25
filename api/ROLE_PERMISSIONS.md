@@ -100,21 +100,18 @@ This document details the exact permissions for each user role in the system.
 - ✓ View scheduled vehicles
 - ✓ Request exit permission
 - ✓ Request maintenance record
-- ✓ Add fuel records
 
 ### API Access
 
 - Read access to `/api/schedules/*`
 - Create access to `/api/exit-requests`
 - Create access to `/api/maintenance`
-- Create access to `/api/fuel`
 
 ### Use Cases
 
 - View assigned schedules
 - Request vehicle exit permissions
 - Report maintenance issues
-- Record fuel consumption
 
 ---
 
@@ -194,7 +191,7 @@ This document details the exact permissions for each user role in the system.
 | Search Vehicles        | ✗     | ✓               | ✓         | ✗      | ✗        | ✗    | ✗              |
 | Update Status          | ✗     | ✓               | ✗         | ✗      | ✗        | ✗    | ✗              |
 | **Fuel Management**    |
-| Add Fuel Record        | ✗     | ✓               | ✗         | ✓      | ✗        | ✗    | ✗              |
+| Add Fuel Record        | ✗     | ✓               | ✗         | ✗      | ✗        | ✗    | ✗              |
 | View Fuel Records      | ✗     | ✓               | ✗         | ✗      | ✗        | ✗    | ✗              |
 | Calculate Balance      | ✗     | ✓               | ✗         | ✗      | ✗        | ✗    | ✗              |
 | Calculate Consumption  | ✗     | ✓               | ✗         | ✗      | ✗        | ✗    | ✗              |
@@ -249,7 +246,7 @@ This document details the exact permissions for each user role in the system.
 
 ### 4. Fuel Management Workflow
 
-1. **Driver** adds fuel record after refueling
+1. **Vehicle Manager** adds fuel record after refueling
 2. **Vehicle Manager** views fuel history
 3. **Vehicle Manager** calculates fuel balance
 4. **Vehicle Manager** generates fuel usage report
