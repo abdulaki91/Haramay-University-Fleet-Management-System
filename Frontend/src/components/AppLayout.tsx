@@ -25,6 +25,7 @@ import {
   Bus,
   Settings,
   TestTube,
+  AlertTriangle,
 } from "lucide-react";
 
 interface NavItemDef {
@@ -66,6 +67,12 @@ const getNavItems = (t: any, userRole: Role): NavItemDef[] => [
     path: "/schedules",
     icon: <CalendarDays size={20} />,
     roles: ["system_admin", "driver", "scheduler", "vehicle_manager", "user"],
+  },
+  {
+    label: "🚨 Emergency Alert",
+    path: "/emergency",
+    icon: <AlertTriangle size={20} className="text-red-500" />,
+    roles: ["driver"], // Only drivers use the dedicated emergency page
   },
   {
     label: t("nav.fuel"),

@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function FuelBalancePage() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user)!;
-  const canAddFuel = user.role === "driver" || user.role === "vehicle_manager";
+  const canAddFuel = user.role === "vehicle_manager";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: fuelRecords = [], isLoading } = useQuery({
@@ -58,6 +58,35 @@ export default function FuelBalancePage() {
     currentLocation: "",
   });
 
+  const emergencyAlertMutation = useMutation({
+    mutationFn: (data: { vehicleId: string; currentLocation?: string }) =>
+      notificationService.sendEmergencyFuelAlert(
+        data.vehicleId,
+        data.currentLocation,
+      ),
+    onSuccess: () => {
+      setEmergencyDialogOpen(false);
+      toast({
+        title: "🚨 Emergency Alert Sent!",
+        description:
+          "Emergency fuel alert has been sent to all administrators and vehicle managers.",
+        duration: 8000,
+      });
+      setEmergencyForm({
+        vehicleId: "",
+        currentLocation: "",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Alert Failed",
+        description: error.message || "Failed to send emergency alert",
+        variant: "destructive",
+        duration: 6000,
+      });
+    },
+  });
+
   const addFuelMutation = useMutation({
     mutationFn: (data: any) => fuelService.create(data),
     onSuccess: () => {
@@ -78,34 +107,6 @@ export default function FuelBalancePage() {
     },
   });
 
-  const emergencyAlertMutation = useMutation({
-    mutationFn: (data: { vehicleId: string; currentLocation?: string }) =>
-      notificationService.sendEmergencyFuelAlert(
-        data.vehicleId,
-        data.currentLocation,
-      ),
-    onSuccess: () => {
-      setEmergencyDialogOpen(false);
-      toast({
-        title: "Emergency Alert Sent",
-        description:
-          "Emergency fuel alert has been sent to vehicle managers and administrators.",
-        variant: "default",
-      });
-      setEmergencyForm({
-        vehicleId: "",
-        currentLocation: "",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Alert Failed",
-        description: error.message || "Failed to send emergency fuel alert",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addFuelMutation.mutate(form);
@@ -113,7 +114,22 @@ export default function FuelBalancePage() {
 
   const handleEmergencySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    emergencyAlertMutation.mutate(emergencyForm);
+
+    if (!emergencyForm.vehicleId) {
+      toast({
+        title: "Vehicle Required",
+        description: "Please select the vehicle that needs emergency fuel",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const alertData = {
+      vehicleId: emergencyForm.vehicleId,
+      currentLocation: emergencyForm.currentLocation || undefined,
+    };
+
+    emergencyAlertMutation.mutate(alertData);
   };
 
   const getPlate = (id: string) =>
@@ -177,6 +193,89 @@ export default function FuelBalancePage() {
         </div>
         {canAddFuel && (
           <div className="flex gap-2">
+            <Dialog
+              open={emergencyDialogOpen}
+              onOpenChange={setEmergencyDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <AlertTriangle size={16} className="mr-2" />
+                  🚨 Emergency Fuel Alert
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="text-red-600 flex items-center gap-2">
+                    <AlertTriangle size={20} />
+                    Manager Emergency Fuel Alert
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEmergencySubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Vehicle Needing Emergency Fuel *</Label>
+                    <Select
+                      value={emergencyForm.vehicleId}
+                      onValueChange={(v) =>
+                        setEmergencyForm({ ...emergencyForm, vehicleId: v })
+                      }
+                    >
+                      <SelectTrigger className="border-red-200">
+                        <SelectValue placeholder="Select vehicle needing emergency fuel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicles.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.plateNumber} — {v.make} {v.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vehicle Location</Label>
+                    <Input
+                      value={emergencyForm.currentLocation}
+                      onChange={(e) =>
+                        setEmergencyForm({
+                          ...emergencyForm,
+                          currentLocation: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., Highway to Harar KM 25, Main Campus Gate"
+                      className="border-red-200"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Provide vehicle location for emergency fuel delivery
+                    </p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-800">
+                      <strong>⚠️ Manager Alert - This will notify:</strong>
+                      <br />• Other Vehicle Managers
+                      <br />• System Administrators
+                      <br />• Emergency fuel delivery team
+                      <br />
+                      <br />
+                      <strong>Use this when:</strong> You've identified a
+                      vehicle that needs emergency fuel delivery or is stranded
+                      due to fuel shortage.
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-700"
+                    disabled={emergencyAlertMutation.isPending}
+                  >
+                    {emergencyAlertMutation.isPending
+                      ? "Sending Alert..."
+                      : "🚨 Send Manager Emergency Alert"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -272,79 +371,6 @@ export default function FuelBalancePage() {
                   </div>
                   <Button type="submit" className="w-full">
                     {t("common.submit")}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog
-              open={emergencyDialogOpen}
-              onOpenChange={setEmergencyDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button variant="destructive">
-                  <AlertTriangle size={16} className="mr-2" /> Emergency Fuel
-                  Alert
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-red-600">
-                    <AlertTriangle size={20} />
-                    Emergency Fuel Alert
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleEmergencySubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Vehicle</Label>
-                    <Select
-                      value={emergencyForm.vehicleId}
-                      onValueChange={(v) =>
-                        setEmergencyForm({ ...emergencyForm, vehicleId: v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vehicle that needs fuel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vehicles.map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
-                            {v.plateNumber} — {v.make} {v.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Location (Optional)</Label>
-                    <Input
-                      value={emergencyForm.currentLocation}
-                      onChange={(e) =>
-                        setEmergencyForm({
-                          ...emergencyForm,
-                          currentLocation: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., Main Campus Gate, Highway KM 15"
-                    />
-                  </div>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-800">
-                      <strong>This will send an emergency alert to:</strong>
-                      <br />• Vehicle Managers
-                      <br />• System Administrators
-                      <br />• Current driver (if assigned)
-                    </p>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    variant="destructive"
-                    disabled={emergencyAlertMutation.isPending}
-                  >
-                    {emergencyAlertMutation.isPending
-                      ? "Sending Alert..."
-                      : "Send Emergency Alert"}
                   </Button>
                 </form>
               </DialogContent>

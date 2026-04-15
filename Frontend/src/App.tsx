@@ -20,6 +20,7 @@ import ChangePasswordPage from "@/pages/ChangePassword";
 import NotificationSettings from "@/pages/NotificationSettings";
 import AdminNotifications from "@/pages/AdminNotifications";
 import AdminNotificationTest from "@/pages/AdminNotificationTest";
+import EmergencyAlert from "@/pages/EmergencyAlert";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -121,6 +122,20 @@ function AppRoutes() {
             ) : (
               <AppLayout>
                 <SchedulesPage />
+              </AppLayout>
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/emergency"
+        element={
+          <ProtectedRoute allowedRoles={["driver"]}>
+            {needsPasswordChange ? (
+              <Navigate to="/change-password" replace />
+            ) : (
+              <AppLayout>
+                <EmergencyAlert />
               </AppLayout>
             )}
           </ProtectedRoute>
